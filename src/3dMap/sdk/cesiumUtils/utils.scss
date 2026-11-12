@@ -1,0 +1,65 @@
+/*鼠标信息*/
+.map3DCoordinates {
+  position: absolute;
+  color: var(--color-font);
+  bottom: 0;
+  right: 0;
+  overflow: hidden;
+  z-index: 10;
+  padding: 3px 5px;
+  transition: 0.4s;
+  font-size: 13px;
+}
+.map3DCoordinates > p {
+  padding: 0 5px;
+  position: relative;
+  float: left;
+  margin: 0;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  min-width: 85px;
+}
+.map3DCoordinates > p:first-child {
+  padding-left: 0;
+}
+.map3DCoordinates > p:last-child {
+  padding-right: 0;
+}
+// .map3DCoordinates > p::after {
+//   content: "";
+//   width: 1px;
+//   height: 70%;
+//   background-color: var(--color-font);
+//   position: absolute;
+//   right: 0;
+//   top: 50%;
+//   transform: translateY(-50%);
+// }
+// .map3DCoordinates > p:last-child:after {
+//   display: none;
+// }
+.map3DCoordinates > p.map3DCoordinates_scale {
+  width: 130px;
+}
+.map3DCoordinates > p.map3DCoordinates_eyeHeight {
+  min-width: 130px;
+}
+#distanceLegendDiv {
+  .distance-legend {
+    bottom: 0;
+    right: 0;
+    z-index: 10;
+  }
+  .distance-legend-label {
+    text-align: right;
+    padding-right: 5px;
+    font-weight: bold;
+    color: var(--color-font);
+  }
+  .distance-legend-scale-bar {
+    left: auto !important;
+    right: 3px !important;
+    border-color: var(--color-font);
+  }
+}

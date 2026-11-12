@@ -1,0 +1,79 @@
+:root,
+[data-theme="blue"] {
+  --color-font: #d6eaff;
+  --tech-bg: #06101f;
+  --tech-bg-2: #0a1c36;
+  --tech-panel: rgba(6, 22, 48, 0.9);
+  --tech-panel-solid: #07162e;
+  --tech-line: rgba(64, 169, 255, 0.45);
+  --tech-line-strong: #40a9ff;
+  --tech-primary: #1677ff;
+  --tech-primary-2: #4096ff;
+  --tech-accent: #36cfc9;
+  --tech-text: #d6eaff;
+  --tech-text-dim: #8eb4d8;
+  --tech-danger: #ff7875;
+  --tech-shadow: 0 8px 28px rgba(0, 20, 50, 0.45);
+}
+
+[data-theme="cyan"] {
+  --color-font: #d9fff8;
+  --tech-bg: #041416;
+  --tech-bg-2: #06282c;
+  --tech-panel: rgba(4, 28, 32, 0.9);
+  --tech-panel-solid: #042226;
+  --tech-line: rgba(54, 207, 201, 0.5);
+  --tech-line-strong: #36cfc9;
+  --tech-primary: #13a8a8;
+  --tech-primary-2: #5cdbd3;
+  --tech-accent: #87e8de;
+  --tech-text: #d9fff8;
+  --tech-text-dim: #8ed4cc;
+  --tech-danger: #ff9c6e;
+  --tech-shadow: 0 8px 28px rgba(0, 30, 30, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--tech-text);
+  background: var(--tech-bg);
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+.sdk-message {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  color: #fff;
+  background: rgba(8, 28, 58, 0.92);
+  border: 1px solid var(--tech-line-strong);
+  border-radius: 4px;
+  box-shadow: var(--tech-shadow);
+}
+
+.demo-tag {
+  padding: 4px 8px;
+  color: #fff;
+  background: rgba(8, 40, 80, 0.85);
+  border: 1px solid #40a9ff;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}

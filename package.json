@@ -1,0 +1,30 @@
+{
+  "name": "amap-example",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@turf/turf": "^6.5.0",
+    "cesium": "1.131.0",
+    "cesium-navigation-es6": "^3.0.9",
+    "lodash": "^4.17.21",
+    "ol": "^10.9.0",
+    "path": "^0.12.7",
+    "pinia": "^2.3.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.16",
+    "@vitejs/plugin-vue": "^5.2.3",
+    "sass": "^1.86.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.5",
+    "vite-plugin-externals": "^0.6.2"
+  }
+}

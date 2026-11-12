@@ -1,0 +1,82 @@
+/*鼠标信息*/
+.map2DCoordinates {
+  position: absolute;
+  color: var(--color-font);
+  bottom: 0;
+  right: 0;
+  overflow: hidden;
+  z-index: 10;
+  padding: 3px 5px;
+  transition: 0.4s;
+  font-size: 13px;
+}
+.map2DCoordinates > p {
+  padding: 0 5px;
+  position: relative;
+  float: left;
+  margin: 0;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  min-width: 85px;
+}
+.map2DCoordinates > p:first-child {
+  padding-left: 0;
+}
+.map2DCoordinates > p:last-child {
+  padding-right: 0;
+}
+// .map2DCoordinates > p::after {
+//   content: "";
+//   width: 1px;
+//   height: 70%;
+//   background-color: var(--color-font);
+//   position: absolute;
+//   right: 0;
+//   top: 50%;
+//   transform: translateY(-50%);
+// }
+// .map2DCoordinates > p:last-child:after {
+//   display: none;
+// }
+.map2DCoordinates > p.map3DCoordinates_scale {
+  // 宽度随 OL ScaleLine 计算结果变化，避免固定宽度导致比例尺线段与标注距离不符
+  min-width: 64px;
+  width: fit-content;
+  border-bottom: 1px solid var(--color-font);
+  border-top: 0;
+  display: flex;
+  justify-content: flex-end;
+  position: relative;
+  top: -2px;
+  &::before {
+    left: 0;
+  }
+  &::after {
+    right: 0;
+  }
+  .ol-scale-line {
+    position: static;
+    background: transparent;
+    padding: 0;
+  }
+  .ol-scale-line-inner {
+    // 保留 ScaleLine 动态 width，使线段像素长度与标注距离一致
+    line-height: 16px;
+    color: var(--color-font);
+    border: none;
+    margin: 0;
+  }
+}
+.map2DCoordinates > p.map3DCoordinates_scale::after,
+.map2DCoordinates > p.map3DCoordinates_scale::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  height: 50%;
+  width: 1px;
+  background: var(--color-font);
+}
+.map2DCoordinates > p.map3DCoordinates_eyeHeight {
+  min-width: 130px;
+}

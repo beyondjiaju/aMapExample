@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "sdk-demo" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [116.36, 39.88],
+            [116.46, 39.88],
+            [116.46, 39.94],
+            [116.36, 39.94],
+            [116.36, 39.88]
+          ]
+        ]
+      }
+    }
+  ]
+}
