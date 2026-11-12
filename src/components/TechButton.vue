@@ -17,12 +17,13 @@ defineProps<{
 </script>
 
 <style scoped lang="scss">
+/* 按钮使用状态色，不跟大面板的系统边线走同一颜色 */
 .tech-btn {
   min-height: 30px;
   padding: 0 10px;
-  color: var(--tech-text);
-  background: linear-gradient(180deg, rgba(22, 119, 255, 0.35), rgba(8, 40, 90, 0.2));
-  border: 1px solid var(--tech-line);
+  color: var(--color-font);
+  background: color-mix(in srgb, var(--color-state-blue) 22%, transparent);
+  border: 1px solid var(--color-state-blue);
   border-radius: 4px;
   cursor: pointer;
   transition: 0.15s ease;
@@ -31,16 +32,17 @@ defineProps<{
 .tech-btn:hover,
 .tech-btn.is-active {
   color: #fff;
-  border-color: var(--tech-line-strong);
-  box-shadow: inset 0 0 12px rgba(64, 169, 255, 0.25);
+  border-color: var(--color-state-blue);
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--color-state-blue) 45%, transparent);
 }
 
 .tech-btn.is-danger {
-  border-color: rgba(255, 120, 117, 0.7);
-  background: linear-gradient(180deg, rgba(255, 77, 79, 0.28), rgba(40, 10, 10, 0.15));
+  border-color: var(--color-state-red);
+  background: color-mix(in srgb, var(--color-state-red) 24%, transparent);
 }
 
 .tech-btn.is-ghost {
   background: transparent;
+  border-color: color-mix(in srgb, var(--color-font) 70%, transparent);
 }
 </style>

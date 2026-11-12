@@ -1,0 +1,17 @@
+/* 通用色不随系统色系变化，供文字和控件使用 */
+:root {
+  --color-font: rgb(255 255 255 / 70%);
+  --color-font-title: #ffffff;
+  /* shadow */
+  --color-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
+  /* scrollbar */
+  --color-scrollbar: rgba(139, 155, 176, 0.55);
+  --color-scrollbar-hover: #c5d0dc;
+  /* 状态色 */
+  --color-state-red: #ff4d4f;
+  --color-state-orange-red: #ff7a45;
+  --color-state-orange: #fa8c16;
+  --color-state-yellow: #fadb14;
+  --color-state-blue: #1677ff;
+  --color-state-green: #52c41a;
+}

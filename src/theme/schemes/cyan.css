@@ -1,0 +1,6 @@
+/* 青碧系只定义大面板背景和边线 */
+[data-theme="cyan"] {
+  --color-bg: rgba(4, 28, 32);
+  --color-bg-1: rgba(4, 28, 32, 0.92);
+  --color-border: rgba(54, 207, 201, 0.55);
+}

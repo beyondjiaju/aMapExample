@@ -3,7 +3,32 @@
     <aside class="catalog">
       <div class="catalog__brand">
         <strong>地图 SDK 示例</strong>
-        <span>蓝色</span>
+        <label ref="themeSwitchEl" class="theme-switch">
+          <select
+            class="theme-switch__select"
+            :value="theme"
+            aria-label="主题颜色"
+            @mousedown.prevent="themeOpen = !themeOpen"
+            @change="onThemeChange"
+            @keydown.esc="themeOpen = false"
+          >
+            <option v-for="item in themeOptions" :key="item.id" :value="item.id">
+              {{ item.label }}
+            </option>
+          </select>
+          <ul v-show="themeOpen" class="theme-switch__menu" role="listbox">
+            <li
+              v-for="item in themeOptions"
+              :key="item.id"
+              role="option"
+              :aria-selected="theme === item.id"
+              @click="pickTheme(item.id)"
+            >
+              <i :style="{ background: item.color }" />
+              <span>{{ item.label }}</span>
+            </li>
+          </ul>
+        </label>
       </div>
       <input v-model="keyword" class="catalog__search" placeholder="搜索对象" />
       <div class="catalog__scroll">
@@ -28,8 +53,6 @@
         <em>{{ engineText }}</em>
       </div>
       <div class="topbar__actions">
-        <TechButton ghost :active="theme === 'blue'" @click="setTheme('blue')">蓝色</TechButton>
-        <TechButton ghost :active="theme === 'cyan'" @click="setTheme('cyan')">青碧</TechButton>
         <ModeSwitch />
       </div>
     </header>
@@ -58,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ModeSwitch from "@/components/ModeSwitch.vue";
 import TechButton from "@/components/TechButton.vue";
@@ -75,6 +98,14 @@ const mapStore = mapData();
 const keyword = ref("");
 const logs = ref<string[]>([]);
 const theme = ref(document.documentElement.dataset.theme || "blue");
+const themeOptions = [
+  { id: "blue", label: "蓝色", color: "#1677ff" },
+  { id: "cyan", label: "青碧", color: "#13a8a8" },
+  { id: "white", label: "白色", color: "#ffffff" },
+  { id: "black", label: "黑色", color: "#111111" }
+] as const;
+const themeOpen = ref(false);
+const themeSwitchEl = ref<HTMLElement | null>(null);
 
 let handle: ExampleHandle | null = null;
 let mountedId = "";
@@ -199,14 +230,31 @@ function openExample(id: string) {
   router.push(`/example/${id}`);
 }
 
-function setTheme(name: "blue" | "cyan") {
+function setTheme(name: "blue" | "cyan" | "white" | "black") {
   theme.value = name;
   document.documentElement.dataset.theme = name;
   localStorage.setItem("amap-example-theme", name);
 }
 
+function onThemeChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value;
+  if (value === "blue" || value === "cyan" || value === "white" || value === "black") setTheme(value);
+}
+
+function pickTheme(id: (typeof themeOptions)[number]["id"]) {
+  setTheme(id);
+  themeOpen.value = false;
+}
+
+function closeThemeMenu(event: PointerEvent) {
+  const root = themeSwitchEl.value;
+  if (root && !root.contains(event.target as Node)) themeOpen.value = false;
+}
+
+onMounted(() => document.addEventListener("pointerdown", closeThemeMenu));
+
 const saved = localStorage.getItem("amap-example-theme");
-if (saved === "blue" || saved === "cyan") setTheme(saved);
+if (saved === "blue" || saved === "cyan" || saved === "white" || saved === "black") setTheme(saved);
 
 watch(
   () => [currentId.value, mapStore.mapModeIs2D, mapRuntime.ready] as const,
@@ -217,6 +265,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", closeThemeMenu);
   token += 1;
   unmountCurrent();
 });
@@ -243,21 +292,85 @@ onBeforeUnmount(() => {
   width: 280px;
   display: flex;
   flex-direction: column;
-  background: var(--tech-panel-solid);
-  border-right: 1px solid var(--tech-line);
+  background: var(--color-bg);
+  border-right: 1px solid var(--color-border);
 }
 
 .catalog__brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  padding: 14px 14px 8px;
+  gap: 8px;
+  padding: 14px 12px 8px;
+  color: var(--color-font-title);
 }
 
-.catalog__brand span,
+.catalog__brand strong {
+  flex: none;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.theme-switch {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.theme-switch__select {
+  width: 72px;
+  height: 26px;
+  padding: 0 4px;
+  color: var(--color-font);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid color-mix(in srgb, var(--color-font) 55%, transparent);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.theme-switch__menu {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: var(--color-shadow);
+}
+
+.theme-switch__menu li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.theme-switch__menu i {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.theme-switch__menu li[aria-selected="true"],
+.theme-switch__menu li:hover {
+  background: color-mix(in srgb, var(--color-state-blue) 18%, transparent);
+}
+
 .from,
 .topbar em {
-  color: var(--tech-text-dim);
+  color: var(--color-font);
   font-style: normal;
   font-size: 12px;
 }
@@ -266,20 +379,22 @@ onBeforeUnmount(() => {
   margin: 0 12px 8px;
   height: 32px;
   padding: 0 8px;
-  color: var(--tech-text);
+  color: var(--color-font);
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--tech-line);
+  border: 1px solid color-mix(in srgb, var(--color-font) 55%, transparent);
   border-radius: 4px;
 }
 
 .catalog__scroll {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 0 8px 16px;
 }
 
 .catalog h3 {
   margin: 12px 6px 6px;
-  color: var(--tech-accent);
+  color: var(--color-font-title);
   font-size: 12px;
   font-weight: 600;
 }
@@ -289,7 +404,7 @@ onBeforeUnmount(() => {
   width: 100%;
   margin: 2px 0;
   padding: 6px 8px;
-  color: var(--tech-text);
+  color: var(--color-font);
   text-align: left;
   background: transparent;
   border: 1px solid transparent;
@@ -299,8 +414,8 @@ onBeforeUnmount(() => {
 
 .catalog button.active,
 .catalog button:hover {
-  background: rgba(22, 119, 255, 0.18);
-  border-color: var(--tech-line);
+  background: color-mix(in srgb, var(--color-state-blue) 18%, transparent);
+  border-color: var(--color-state-blue);
 }
 
 .topbar {
@@ -313,8 +428,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   min-height: 48px;
   padding: 8px 12px;
-  background: var(--tech-panel);
-  border: 1px solid var(--tech-line);
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 
@@ -357,9 +472,9 @@ onBeforeUnmount(() => {
 
 .method-tags span {
   padding: 2px 6px;
-  color: var(--tech-accent);
+  color: var(--color-state-blue);
   font-size: 12px;
-  border: 1px solid var(--tech-line);
+  border: 1px solid color-mix(in srgb, var(--color-state-blue) 65%, transparent);
   border-radius: 3px;
 }
 
@@ -376,7 +491,7 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 8px;
   overflow: auto;
-  color: var(--tech-text-dim);
+  color: var(--color-font);
   white-space: pre-wrap;
   background: rgba(0, 0, 0, 0.25);
   border-radius: 4px;

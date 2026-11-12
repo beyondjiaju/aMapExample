@@ -18,11 +18,11 @@ defineProps<{
 
 <style scoped lang="scss">
 .tech-panel {
-  color: var(--tech-text);
-  background: var(--tech-panel);
-  border: 1px solid var(--tech-line);
+  color: var(--color-font);
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  box-shadow: var(--tech-shadow);
+  box-shadow: var(--color-shadow);
   backdrop-filter: blur(8px);
 }
 
@@ -32,16 +32,16 @@ defineProps<{
   gap: 8px;
   height: 36px;
   padding: 0 12px;
-  color: #fff;
-  border-bottom: 1px solid var(--tech-line);
+  color: var(--color-font);
+  border-bottom: 1px solid var(--color-border);
   letter-spacing: 0.04em;
 }
 
 .tech-panel__mark {
   width: 3px;
   height: 14px;
-  background: var(--tech-accent);
-  box-shadow: 0 0 8px var(--tech-accent);
+  background: var(--color-state-blue);
+  box-shadow: 0 0 8px var(--color-state-blue);
 }
 
 .tech-panel__body {
