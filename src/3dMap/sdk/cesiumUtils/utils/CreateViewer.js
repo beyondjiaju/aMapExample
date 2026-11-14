@@ -1,5 +1,4 @@
 import * as Cesium from "@/3dMap/sdk/cesium";
-import { resolve } from "path";
 class CreateViewer {
   constructor(id, options = {}) {
     if (!id) return;

@@ -1,6 +1,6 @@
 /* 蓝色系只定义大面板背景和边线 */
 [data-theme="blue"] {
   --color-bg: rgba(6, 22, 48);
-  --color-bg-1: rgba(6, 22, 48, 0.92);
+  --color-bg-panel: rgba(6, 22, 48, 0.92);
   --color-border: rgba(64, 169, 255, 0.5);
 }

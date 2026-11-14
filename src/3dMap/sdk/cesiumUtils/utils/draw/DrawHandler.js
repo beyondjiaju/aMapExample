@@ -1,4 +1,4 @@
-import { message } from "@/utils/message";
+import { message } from "@/3dMap/interface";
 import * as Cesium from "@/3dMap/sdk/cesium";
 import * as turf from "@turf/turf";
 import {

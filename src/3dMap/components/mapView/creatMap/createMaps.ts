@@ -2,7 +2,8 @@ import { reactive } from "vue";
 import * as Cesium from "@/3dMap/sdk/cesium";
 import * as ol from "@/3dMap/sdk/ol";
 import { createViewer, AMapImageryProvider } from "@/3dMap/sdk/cesiumUtils";
-import { setOlMap, setViewer, viewer, olMap } from "@/3dMap/global";
+import { setOlMap, setViewer, viewer, olMap, config } from "@/3dMap/global";
+import { heightToZoom } from "@/3dMap/sdk/olUtils";
 import { defaults as defaultInteractions } from "ol/interaction";
 
 /** 示例页读取的运行时地图，创建完成后置 ready */
@@ -12,7 +13,21 @@ export const mapRuntime = reactive({
   olMap: null as any
 });
 
-const HOME = { lon: 116.397, lat: 39.909, height: 28000 };
+/** 还没读到 mapConfig 时，沿用原来的示例中心 */
+const FALLBACK_HOME = { lon: 116.397, lat: 39.909, height: 28000 };
+
+/** 初始定位优先用 hook 写入的 mapConfig.homeData */
+function readHome() {
+  const home = config.homeData || {};
+  return {
+    lon: home.longitude ?? FALLBACK_HOME.lon,
+    lat: home.latitude ?? FALLBACK_HOME.lat,
+    height: home.height ?? FALLBACK_HOME.height,
+    heading: home.heading ?? 0,
+    pitch: home.pitch ?? Cesium.Math.toRadians(-90),
+    roll: home.roll ?? 0
+  };
+}
 
 /** 三维底图走 SDK 的高德电子图，并按 WGS84 纠偏 */
 function addCesiumBase(target: any) {
@@ -22,12 +37,13 @@ function addCesiumBase(target: any) {
 }
 
 function flyCesiumHome(target: any) {
+  const home = readHome();
   target.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(HOME.lon, HOME.lat, HOME.height),
+    destination: Cesium.Cartesian3.fromDegrees(home.lon, home.lat, home.height),
     orientation: {
-      heading: 0,
-      pitch: Cesium.Math.toRadians(-90),
-      roll: 0
+      heading: home.heading,
+      pitch: home.pitch,
+      roll: home.roll
     }
   });
 }
@@ -47,6 +63,7 @@ export async function mountCesium() {
 
 /** 创建二维地图，投影与原项目一致为 EPSG:4326 */
 export function mountOl() {
+  const home = readHome();
   const map = new ol.Map({
     target: "olContainer",
     layers: [
@@ -58,8 +75,8 @@ export function mountOl() {
       })
     ],
     view: new ol.View({
-      center: [HOME.lon, HOME.lat],
-      zoom: 12,
+      center: [home.lon, home.lat],
+      zoom: heightToZoom(home.height),
       projection: ol.WGS84
     }),
     interactions: defaultInteractions({

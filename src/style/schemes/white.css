@@ -1,7 +1,7 @@
 /* 白色系：浅色面板。文字改为深色，避免和白底叠在一起 */
 [data-theme="white"] {
   --color-bg: #f7f8fa;
-  --color-bg-1: rgba(255, 255, 255, 0.92);
+  --color-bg-panel: rgba(255, 255, 255, 0.92);
   --color-border: rgba(0, 0, 0, 0.14);
   --color-font: rgba(0, 0, 0, 0.72);
   --color-font-title: #1f1f1f;

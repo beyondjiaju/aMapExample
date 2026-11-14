@@ -1,5 +1,6 @@
 <template>
   <div class="shell">
+    <MapView class="shell-map" />
     <aside class="catalog">
       <div class="catalog__brand">
         <strong>地图 SDK 示例</strong>
@@ -47,16 +48,6 @@
       </div>
     </aside>
 
-    <header class="topbar">
-      <div>
-        <strong>{{ current?.name || "示例" }}</strong>
-        <em>{{ engineText }}</em>
-      </div>
-      <div class="topbar__actions">
-        <ModeSwitch />
-      </div>
-    </header>
-
     <TechPanel class="method-panel" :title="current?.name || '方法'">
       <p class="desc">{{ current?.summary }}</p>
       <p class="from">{{ current?.from }}</p>
@@ -83,12 +74,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import ModeSwitch from "@/components/ModeSwitch.vue";
+import MapView from "@/3dMap/components/mapView/index.vue";
 import TechButton from "@/components/TechButton.vue";
 import TechPanel from "@/components/TechPanel.vue";
 import mapData from "@/3dMap/store/map";
 import { olMap, viewer } from "@/3dMap/global";
-import { mapRuntime, recreateCesium } from "@/map/createMaps";
+import { mapRuntime, recreateCesium } from "@/3dMap/components/mapView/creatMap/createMaps";
 import { exampleGroups, findExample } from "@/examples";
 import type { ExampleAction, ExampleContext, ExampleHandle, SdkExample } from "@/examples/types";
 
@@ -115,13 +106,6 @@ let token = 0;
 const currentId = computed(() => String(route.params.id || ""));
 const current = computed(() => findExample(currentId.value));
 const mode = computed<"2d" | "3d">(() => (mapStore.mapModeIs2D ? "2d" : "3d"));
-const engineText = computed(() => {
-  const engine = current.value?.engine;
-  if (engine === "cesium") return "仅三维实现，切换二维时注销实例";
-  if (engine === "ol") return "仅二维实现，切换三维时注销实例";
-  if (engine === "both") return "二维 / 三维各自实现，切换时重建";
-  return "与地图模式无关，切换后按当前模式回显";
-});
 
 const visibleGroups = computed(() => {
   const text = keyword.value.trim().toLowerCase();
@@ -278,8 +262,8 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+.shell-map,
 .catalog,
-.topbar,
 .method-panel {
   pointer-events: auto;
 }
@@ -368,8 +352,7 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--color-state-blue) 18%, transparent);
 }
 
-.from,
-.topbar em {
+.from {
   color: var(--color-font);
   font-style: normal;
   font-size: 12px;
@@ -416,26 +399,6 @@ onBeforeUnmount(() => {
 .catalog button:hover {
   background: color-mix(in srgb, var(--color-state-blue) 18%, transparent);
   border-color: var(--color-state-blue);
-}
-
-.topbar {
-  position: absolute;
-  top: 12px;
-  left: 292px;
-  right: 372px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 48px;
-  padding: 8px 12px;
-  background: var(--color-bg-1);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-}
-
-.topbar__actions {
-  display: flex;
-  gap: 8px;
 }
 
 .method-panel {

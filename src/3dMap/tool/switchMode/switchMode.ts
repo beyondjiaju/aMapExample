@@ -3,7 +3,7 @@ import * as Cesium from "@/3dMap/sdk/cesium";
 import { heightToZoom } from "@/3dMap/sdk/olUtils";
 import { olMap, viewer } from "@/3dMap/global";
 import mapData from "@/3dMap/store/map";
-import { resizeMaps } from "@/map/createMaps";
+import { resizeMaps } from "@/3dMap/components/mapView/creatMap/createMaps";
 
 /**
  * 二三维切换。

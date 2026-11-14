@@ -1,5 +1,4 @@
 import * as Cesium from "@/3dMap/sdk/cesium";
-import { resolve } from "path";
 /**相机使用工具 */
 class CameraHanlder {
   constructor(viewer) {

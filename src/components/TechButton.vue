@@ -22,7 +22,7 @@ defineProps<{
   min-height: 30px;
   padding: 0 10px;
   color: var(--color-font);
-  background: color-mix(in srgb, var(--color-state-blue) 22%, transparent);
+  background: color-mix(in srgb, var(--color-state-blue), transparent);
   border: 1px solid var(--color-state-blue);
   border-radius: 4px;
   cursor: pointer;

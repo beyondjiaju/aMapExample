@@ -17,6 +17,7 @@ export * from "./utils/RunFeature";
 export * from "./utils/CanvasToImage";
 export * from "./utils/CameraHanlder";
 export * from "./utils/HollowCylinder";
+export * from "./utils/overViewMap";
 
 /**ol扩展 业务相关business 文件*/
 export * from "./business/HeightLightLayer";

@@ -1,0 +1,45 @@
+{
+  "cameraSet": {
+    "pitchLimit": {
+      "min": 5,
+      "max": 90
+    },
+    "heightLimit": {
+      "min": 1,
+      "max": 5000000
+    }
+  },
+  "homeData": {
+    "longitude": 113.36187800573076,
+    "latitude": 23.437816549713858,
+    "height": 1009065.1470326117,
+    "heading": 6.283185302593976,
+    "pitch": -1.5707963267948966,
+    "roll": 0
+  },
+  "geometryShowSet": {
+    "style": {
+      "color": "#ffffff",
+      "alpha": 0.4
+    },
+    "point": {
+      "maxShowHeight": 3000,
+      "maxShowScale": 1.3,
+      "labelMaxShowHeight": 2000,
+      "labelMaxShowScale": 0.8
+    },
+    "label": {
+      "maxShowHeight": 3000,
+      "maxShowScale": 1.3
+    },
+    "polyline": {
+      "labelMaxShowHeight": 2000,
+      "labelMaxShowScale": 1.2
+    },
+    "polygon": {
+      "labelMaxShowHeight": 2000,
+      "labelMaxShowScale": 1.6,
+      "labelMaxShowScaleGrid": 1.2
+    }
+  }
+}

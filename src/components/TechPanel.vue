@@ -19,7 +19,7 @@ defineProps<{
 <style scoped lang="scss">
 .tech-panel {
   color: var(--color-font);
-  background: var(--color-bg-1);
+  background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   border-radius: 6px;
   box-shadow: var(--color-shadow);

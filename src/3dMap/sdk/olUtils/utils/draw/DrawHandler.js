@@ -1,4 +1,4 @@
-import { message } from "@/utils/message";
+import { message } from "@/3dMap/interface";
 import { getColorAlpha } from "../CorlorTool";
 import * as Cesium from "@/3dMap/sdk/cesium";
 import * as ol from "@/3dMap/sdk/ol";

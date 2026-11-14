@@ -1,5 +1,5 @@
 import * as Cesium from "@/3dMap/sdk/cesium";
-import { message } from "@/utils/message";
+import { message } from "@/3dMap/interface";
 import {
   PolylineAntialiasingMaterialProperty,
   shapeCoordinates
