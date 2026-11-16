@@ -1,16 +1,29 @@
-import { onBeforeUnmount, watch } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import * as Cesium from "@/3dMap/sdk/cesium";
 import * as cesiumSdk from "@/3dMap/sdk/cesiumUtils";
 import * as olSdk from "@/3dMap/sdk/olUtils";
 import mapData from "@/3dMap/store/map";
-import { olMap, viewer } from "@/3dMap/global";
+import { flyToHome, olMap, viewer } from "@/3dMap/global";
 import { mapRuntime } from "@/3dMap/components/mapView/creatMap/createMaps";
-import { TAG_CENTER, TAG_HTML, TAG_ID } from "./data";
+import { createTagPoints } from "./data";
 
-/** 进入示例即创建单个 HTML 标签，离开或切换二三维时注销 */
+type TagCollection = {
+  setVisible: (state: boolean) => void;
+  setDrag: (state: boolean) => void;
+  setCollision: (state: boolean) => void;
+  setDragLine: (option: { color?: string; width?: number }) => void;
+  destroy: () => void;
+};
+
+/** 进入示例即创建标签集合，并把随机点位全部加入集合 */
 export function useHtmlTag() {
   const mapStore = mapData();
-  let api: { destroy: () => void } | null = null;
+  const visible = ref(true);
+  const drag = ref(false);
+  const collision = ref(true);
+  const lineColor = ref("#ff0000");
+  const lineWidth = ref(1.5);
+  let api: TagCollection | null = null;
   let token = 0;
 
   function dispose() {
@@ -18,30 +31,60 @@ export function useHtmlTag() {
     api = null;
   }
 
+  /** 按当前勾选和拖动线设置，同步到已加载的集合 */
+  function syncControls() {
+    if (!api) return;
+    api.setVisible(visible.value);
+    api.setDrag(drag.value);
+    api.setCollision(collision.value);
+    api.setDragLine({ color: lineColor.value, width: Number(lineWidth.value) });
+  }
+
   function mount() {
     const runToken = ++token;
     dispose();
     if (!mapRuntime.ready || runToken !== token) return;
     const is2d = mapStore.mapModeIs2D;
-    if (is2d) {
-      if (!olMap) return;
-      api = new olSdk.HtmlTag(olMap, {
-        position: TAG_CENTER,
-        html: TAG_HTML,
-        id: TAG_ID,
-        noEvent: false,
-        isDrag: true
-      });
-      return;
-    }
-    if (!viewer || viewer.isDestroyed?.()) return;
-    api = new cesiumSdk.HtmlTag(viewer, {
-      position: Cesium.Cartesian3.fromDegrees(TAG_CENTER[0], TAG_CENTER[1]),
-      html: TAG_HTML,
-      id: TAG_ID,
-      noEvent: false,
-      isDrag: true
+    const host = is2d ? olMap : viewer;
+    if (!host || (!is2d && viewer?.isDestroyed?.())) return;
+    const Tag = is2d ? olSdk.HtmlTag : cesiumSdk.HtmlTag;
+    const collection: TagCollection & { add: (tag: unknown) => void } = is2d
+      ? new olSdk.HtmlTagCollection(olMap)
+      : new cesiumSdk.HtmlTagCollection(viewer);
+    createTagPoints().forEach(point => {
+      const position = is2d
+        ? [point.lon, point.lat]
+        : Cesium.Cartesian3.fromDegrees(point.lon, point.lat);
+      collection.add(
+        new Tag(host, {
+          position,
+          html: point.html,
+          id: point.id
+        })
+      );
     });
+    api = collection;
+    syncControls();
+    // 示例数据就绪后回到配置的初始视野
+    flyToHome();
+  }
+
+  function applyVisible() {
+    api?.setVisible(visible.value);
+  }
+
+  function applyDrag() {
+    api?.setDrag(drag.value);
+  }
+
+  function applyCollision() {
+    api?.setCollision(collision.value);
+  }
+
+  function applyDragLine() {
+    const width = Number(lineWidth.value);
+    if (!Number.isFinite(width)) return;
+    api?.setDragLine({ color: lineColor.value, width });
   }
 
   watch(
@@ -54,4 +97,16 @@ export function useHtmlTag() {
     token += 1;
     dispose();
   });
+
+  return {
+    visible,
+    drag,
+    collision,
+    lineColor,
+    lineWidth,
+    applyVisible,
+    applyDrag,
+    applyCollision,
+    applyDragLine
+  };
 }

@@ -50,8 +50,15 @@ class HtmlTagCollection {
    */
   setDragLine(option) {
     this.collection.forEach(HtmlTag => {
-      if(option.color)HtmlTag.dragLineColor = ption.color;
+      if(option.color)HtmlTag.dragLineColor = option.color;
       if(option.width)HtmlTag.dragLineWidth = option.width;
+      // 线样式在创建时写入 feature，已有线要改 stroke 才会变
+      const feature = HtmlTag.dragLine?.feature;
+      const stroke = feature?.getStyle?.()?.getStroke?.();
+      if (!stroke) return;
+      if (option.color) stroke.setColor(option.color);
+      if (option.width) stroke.setWidth(option.width);
+      feature.changed();
     });
   }
   /**根据索引获取集合内HtmlTag

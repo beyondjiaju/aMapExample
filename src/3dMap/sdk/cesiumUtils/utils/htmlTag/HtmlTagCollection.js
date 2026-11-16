@@ -1,3 +1,6 @@
+import * as Cesium from "@/3dMap/sdk/cesium";
+import { PolylineAntialiasingMaterialProperty } from "../material/PolylineAntialiasingMaterialProperty";
+
 /**创建HtmlTagCollection标签集合对象
  */
 class HtmlTagCollection {
@@ -50,8 +53,17 @@ class HtmlTagCollection {
    */
   setDragLine(option) {
     this.collection.forEach(HtmlTag => {
-      if(option.color)HtmlTag.dragLineColor = ption.color;
+      if(option.color)HtmlTag.dragLineColor = option.color;
       if(option.width)HtmlTag.dragLineWidth = option.width;
+      // 线在创建时写入材质和宽度，已有线要改实体本身才会变
+      const polyline = HtmlTag.dragLine?.polyline;
+      if (!polyline) return;
+      if (option.color) {
+        polyline.material = new PolylineAntialiasingMaterialProperty({
+          color: Cesium.Color.fromCssColorString(option.color)
+        });
+      }
+      if (option.width) polyline.width = option.width;
     });
   }
   /**根据索引获取集合内HtmlTag
