@@ -1,6 +1,12 @@
-/* 蓝色系只定义大面板背景和边线 */
+/* 蓝色系 */
 [data-theme="blue"] {
+  /* 主色 */
+  --color-main: #146ced;
+  --color-main-1: #589cff;
+  /* 背景 */
   --color-bg: rgba(6, 22, 48);
   --color-bg-panel: rgba(6, 22, 48, 0.92);
+  --color-bg-3: rgba(0, 102, 254, 0.3);
+  /* 边线 */
   --color-border: rgba(64, 169, 255, 0.5);
 }

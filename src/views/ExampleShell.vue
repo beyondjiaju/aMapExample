@@ -1,6 +1,5 @@
 <template>
   <div class="shell">
-    <MapView class="shell-map" />
     <aside class="catalog">
       <div class="catalog__brand">
         <strong>地图 SDK 示例</strong>
@@ -48,46 +47,30 @@
       </div>
     </aside>
 
-    <TechPanel class="method-panel" :title="current?.name || '方法'">
-      <p class="desc">{{ current?.summary }}</p>
-      <p class="from">{{ current?.from }}</p>
-      <div class="method-tags">
-        <span v-for="method in current?.methods || []" :key="method">{{ method }}</span>
-      </div>
-      <div class="method-actions">
-        <TechButton @click="mountCurrent(true)">初始化</TechButton>
-        <TechButton danger @click="unmountCurrent">注销</TechButton>
-        <TechButton
-          v-for="action in current?.actions || []"
-          :key="action.name"
-          ghost
-          @click="runAction(action)"
-        >
-          {{ action.name }}
-        </TechButton>
-      </div>
-      <pre class="log">{{ logs.join("\n") }}</pre>
-    </TechPanel>
+    <!-- 目录在左，地图占右侧 -->
+    <div class="shell-map">
+      <MapView>
+        <template #content>
+          <!-- 方法面板挂在地图内，贴在地图左侧 -->
+          <TechPanel class="method-panel" :title="current?.name || '方法'">
+            <component :is="currentComponent" v-if="currentComponent" />
+          </TechPanel>
+        </template>
+      </MapView>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import MapView from "@/3dMap/components/mapView/index.vue";
-import TechButton from "@/components/TechButton.vue";
 import TechPanel from "@/components/TechPanel.vue";
-import mapData from "@/3dMap/store/map";
-import { olMap, viewer } from "@/3dMap/global";
-import { mapRuntime, recreateCesium } from "@/3dMap/components/mapView/creatMap/createMaps";
 import { exampleGroups, findExample } from "@/examples";
-import type { ExampleAction, ExampleContext, ExampleHandle, SdkExample } from "@/examples/types";
 
 const route = useRoute();
 const router = useRouter();
-const mapStore = mapData();
 const keyword = ref("");
-const logs = ref<string[]>([]);
 const theme = ref(document.documentElement.dataset.theme || "blue");
 const themeOptions = [
   { id: "blue", label: "蓝色", color: "#1677ff" },
@@ -98,14 +81,10 @@ const themeOptions = [
 const themeOpen = ref(false);
 const themeSwitchEl = ref<HTMLElement | null>(null);
 
-let handle: ExampleHandle | null = null;
-let mountedId = "";
-let mountedMode: "2d" | "3d" | "" = "";
-let token = 0;
-
 const currentId = computed(() => String(route.params.id || ""));
 const current = computed(() => findExample(currentId.value));
-const mode = computed<"2d" | "3d">(() => (mapStore.mapModeIs2D ? "2d" : "3d"));
+/** 当前要放进方法面板的示例组件 */
+const currentComponent = computed(() => current.value?.component ?? null);
 
 const visibleGroups = computed(() => {
   const text = keyword.value.trim().toLowerCase();
@@ -114,103 +93,13 @@ const visibleGroups = computed(() => {
       name: group.name,
       items: group.items.filter(item => {
         if (!text) return true;
-        return `${item.name} ${item.id} ${item.summary}`.toLowerCase().includes(text);
+        return `${item.name} ${item.id}`.toLowerCase().includes(text);
       })
     }))
     .filter(group => group.items.length);
 });
 
-function pushLog(message: string) {
-  logs.value = [...logs.value.slice(-12), message];
-}
-
-function makeContext(targetMode: "2d" | "3d"): ExampleContext {
-  return {
-    mode: targetMode,
-    viewer,
-    olMap,
-    log: pushLog
-  };
-}
-
-function supports(example: SdkExample, targetMode: "2d" | "3d") {
-  if (example.engine === "cesium") return targetMode === "3d";
-  if (example.engine === "ol") return targetMode === "2d";
-  return true;
-}
-
-async function unmountCurrent() {
-  const example = findExample(mountedId);
-  if (!example || !handle) {
-    handle = null;
-    mountedId = "";
-    mountedMode = "";
-    return;
-  }
-  try {
-    example.unmount(handle, makeContext(mountedMode || mode.value));
-    pushLog(`已注销 ${example.name}`);
-  } catch (error) {
-    pushLog(`注销失败: ${(error as Error).message}`);
-  }
-  handle = null;
-  mountedId = "";
-  mountedMode = "";
-}
-
-async function mountCurrent(manual = false) {
-  const example = current.value;
-  const runToken = ++token;
-  await unmountCurrent();
-  if (!example || runToken !== token) return;
-  if (!mapRuntime.ready) {
-    pushLog("地图还在初始化");
-    return;
-  }
-  // 其他示例依赖全局三维球。createViewer 示例注销后，切走时补建一次
-  if (
-    mode.value === "3d" &&
-    example.engine !== "ol" &&
-    example.id !== "create-viewer" &&
-    (!viewer || viewer.isDestroyed?.())
-  ) {
-    await recreateCesium();
-    pushLog("三维球已重新创建");
-  }
-  if (!supports(example, mode.value)) {
-    pushLog(`${example.name} 在当前${mode.value === "2d" ? "二维" : "三维"}下没有对应实现，实例保持注销`);
-    return;
-  }
-  try {
-    handle = await example.mount(makeContext(mode.value));
-    if (runToken !== token) {
-      example.unmount(handle, makeContext(mode.value));
-      handle = null;
-      return;
-    }
-    mountedId = example.id;
-    mountedMode = mode.value;
-    if (manual || logs.value.length === 0) pushLog(`已初始化 ${example.name}`);
-    else pushLog(`已按${mode.value === "2d" ? "二维" : "三维"}重新初始化 ${example.name}`);
-  } catch (error) {
-    pushLog(`初始化失败: ${(error as Error).message}`);
-  }
-}
-
-async function runAction(action: ExampleAction) {
-  if (!handle || !current.value) {
-    pushLog("请先初始化");
-    return;
-  }
-  try {
-    await action.run(handle, makeContext(mode.value));
-  } catch (error) {
-    pushLog(`${action.name} 失败: ${(error as Error).message}`);
-  }
-}
-
 function openExample(id: string) {
-  logs.value = [];
   router.push(`/example/${id}`);
 }
 
@@ -240,18 +129,8 @@ onMounted(() => document.addEventListener("pointerdown", closeThemeMenu));
 const saved = localStorage.getItem("amap-example-theme");
 if (saved === "blue" || saved === "cyan" || saved === "white" || saved === "black") setTheme(saved);
 
-watch(
-  () => [currentId.value, mapStore.mapModeIs2D, mapRuntime.ready] as const,
-  () => {
-    mountCurrent(false);
-  },
-  { immediate: true }
-);
-
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", closeThemeMenu);
-  token += 1;
-  unmountCurrent();
 });
 </script>
 
@@ -259,6 +138,7 @@ onBeforeUnmount(() => {
 .shell {
   position: absolute;
   inset: 0;
+  display: flex;
   pointer-events: none;
 }
 
@@ -269,15 +149,20 @@ onBeforeUnmount(() => {
 }
 
 .catalog {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
+  flex: none;
   width: 280px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--color-bg);
   border-right: 1px solid var(--color-border);
+}
+
+.shell-map {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
 }
 
 .catalog__brand {
@@ -352,12 +237,6 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--color-state-blue) 18%, transparent);
 }
 
-.from {
-  color: var(--color-font);
-  font-style: normal;
-  font-size: 12px;
-}
-
 .catalog__search {
   margin: 0 12px 8px;
   height: 32px;
@@ -402,10 +281,11 @@ onBeforeUnmount(() => {
 }
 
 .method-panel {
+  max-height: calc(100% - 24px);
   position: absolute;
   top: 12px;
-  right: 12px;
-  bottom: 12px;
+  left: 12px;
+  z-index: 6;
   width: 348px;
   display: flex;
   flex-direction: column;
@@ -416,48 +296,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
   min-height: 0;
   height: calc(100% - 36px);
-}
-
-.desc,
-.from {
-  margin: 0 0 8px;
-  line-height: 1.5;
-  font-size: 13px;
-}
-
-.method-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  max-height: 120px;
-  overflow: auto;
-}
-
-.method-tags span {
-  padding: 2px 6px;
-  color: var(--color-state-blue);
-  font-size: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-state-blue) 65%, transparent);
-  border-radius: 3px;
-}
-
-.method-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0;
-}
-
-.log {
-  flex: 1;
-  min-height: 80px;
-  margin: 0;
-  padding: 8px;
-  overflow: auto;
-  color: var(--color-font);
-  white-space: pre-wrap;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 4px;
-  font-size: 12px;
+  overflow-y: auto;
 }
 </style>

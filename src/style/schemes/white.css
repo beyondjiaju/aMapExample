@@ -1,8 +1,16 @@
-/* 白色系：浅色面板。文字改为深色，避免和白底叠在一起 */
+/* 白色系。浅底用深色字 */
 [data-theme="white"] {
+  /* 主色 */
+  --color-main: #1f1f1f;
+  --color-main-1: #595959;
+  /* 背景 */
   --color-bg: #f7f8fa;
   --color-bg-panel: rgba(255, 255, 255, 0.92);
+  --color-bg-3: rgba(0, 0, 0, 0.06);
+  /* 边线 */
   --color-border: rgba(0, 0, 0, 0.14);
+  /* 文字 */
   --color-font: rgba(0, 0, 0, 0.72);
   --color-font-title: #1f1f1f;
+  --color-font-select: #1f1f1f;
 }

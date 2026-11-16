@@ -1,6 +1,12 @@
-/* 黑色系只定义大面板背景和边线 */
+/* 黑色系 */
 [data-theme="black"] {
+  /* 主色 */
+  --color-main: #e8e8e8;
+  --color-main-1: rgba(255, 255, 255, 0.72);
+  /* 背景 */
   --color-bg: #111111;
   --color-bg-panel: rgba(17, 17, 17, 0.92);
+  --color-bg-3: rgba(255, 255, 255, 0.12);
+  /* 边线 */
   --color-border: rgba(255, 255, 255, 0.22);
 }

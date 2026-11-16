@@ -123,6 +123,8 @@ class HtmlTag {
     that.historyPosition = that.options.position;
     that.show = that.options.show;
     that.isDrag = that.options.isDrag;
+    that.dragLineColor = that.options.dragLineColor;
+    that.dragLineWidth = that.options.dragLineWidth;
     that.addListener();
   }
   addListener() {
@@ -251,8 +253,8 @@ class HtmlTag {
             const geometry = new ol.geom.LineString(that.dragLinePositions);
             const style = new ol.style.Style({
               stroke: new ol.style.Stroke({
-                color: that.options.dragLineColor,
-                width: 1
+                color: that.dragLineColor,
+                width: that.dragLineWidth
               })
             });
             that.dragLine = {

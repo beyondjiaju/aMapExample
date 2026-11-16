@@ -1,18 +1,13 @@
 import type { SdkExample } from "./types";
-import { engineExamples } from "./engine";
-import { graphicExamples } from "./graphic";
-import { imageryExamples } from "./imagery";
-import { interactExamples } from "./interact";
-import { materialExamples } from "./materials";
-import { queryExamples } from "./query";
+import HtmlTag from "./html-tag/index.vue";
+import HtmlTagCollection from "./html-tag-collection/index.vue";
+import HeatMap from "./heat-map/index.vue";
 
+/** 左侧目录只挂「标注热力」，点击后切换对应面板组件 */
 export const examples: SdkExample[] = [
-  ...interactExamples,
-  ...graphicExamples,
-  ...materialExamples,
-  ...imageryExamples,
-  ...queryExamples,
-  ...engineExamples
+  { id: "html-tag", group: "标注热力", name: "HtmlTag", component: HtmlTag },
+  { id: "html-tag-collection", group: "标注热力", name: "HtmlTagCollection", component: HtmlTagCollection },
+  { id: "heat-map", group: "标注热力", name: "HeatMap2D", component: HeatMap }
 ];
 
 export function findExample(id: string) {

@@ -117,6 +117,8 @@ class HtmlTag {
     that.historyPosition = that.options.position;
     that.show = that.options.show;
     that.isDrag = that.options.isDrag;
+    that.dragLineColor = that.options.dragLineColor;
+    that.dragLineWidth = that.options.dragLineWidth;
     that.addListener();
   }
   addListener() {
@@ -282,10 +284,10 @@ class HtmlTag {
                   }, false),
                   material: new PolylineAntialiasingMaterialProperty({
                     color: Cesium.Color.fromCssColorString(
-                      that.options.dragLineColor
+                      that.dragLineColor
                     )
                   }),
-                  width: that.options.dragLineWidth
+                  width: that.dragLineWidth
                 }
               });
             }

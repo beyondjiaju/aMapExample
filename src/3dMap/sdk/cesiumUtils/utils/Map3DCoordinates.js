@@ -27,7 +27,7 @@ class Map3DCoordinates {
             <p class="map3DCoordinates_eyeHeight">视点高:</p>
             <p class="map3DCoordinates_latitude">0</p>
             <p class="map3DCoordinates_longitude">0</p>
-            <p class="map3DCoordinates_height">0</p> 
+            <p class="map3DCoordinates_height" style="display: none">0</p> 
         `;
     const distanceLegendDiv = document.getElementById("distanceLegendDiv");
     if (distanceLegendDiv) {
@@ -146,17 +146,14 @@ class Map3DCoordinates {
           showLongitude;
         that.dom.querySelector(".map3DCoordinates_latitude").innerHTML =
           showLatitude;
-        that.dom.querySelector(".map3DCoordinates_height").innerHTML =
-          movePositionCartographic.height.toFixed(2) + " m";
-        // 设置当前视点高度显示状态
-        // if (camera_Cartographic.height < 100000) {
-        // if (movePositionCartographic.height > 0) {
-        //   that.dom.querySelector(".map3DCoordinates_height").style.display =
-        //     "block";
-        // } else {
-        //   that.dom.querySelector(".map3DCoordinates_height").style.display =
-        //     "none";
-        // }
+        const heightDom = that.dom.querySelector(".map3DCoordinates_height");
+        // 当前位置已载入地形才显示高程，椭球或瓦片未到位则隐藏
+        const terrainLoaded = that.hasLoadedTerrain(movePositionCartographic);
+        heightDom.style.display = terrainLoaded ? "block" : "none";
+        if (terrainLoaded) {
+          heightDom.innerHTML =
+            movePositionCartographic.height.toFixed(2) + " m";
+        }
       }
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     scene.postRender.addEventListener(() => {
@@ -195,6 +192,22 @@ class Map3DCoordinates {
       that.dom.querySelector(".map3DCoordinates_eyeHeight").innerHTML =
         "视点高: " + heightText;
     });
+  }
+  /**
+   * 判断当前点所在图形是否已加载地形。
+   * 椭球地形没有高程；地形范围外或瓦片还没加载完也视为没有。
+   */
+  hasLoadedTerrain(cartographic) {
+    const provider = this.viewer.terrainProvider;
+    if (!provider || provider instanceof Cesium.EllipsoidTerrainProvider) {
+      return false;
+    }
+    const availability = provider.availability;
+    if (availability) {
+      const level = availability.computeMaximumLevelAtPosition(cartographic);
+      if (!Cesium.defined(level) || level < 0) return false;
+    }
+    return Cesium.defined(this.viewer.scene.globe.getHeight(cartographic));
   }
 }
 const map3DCoordinates = option => {

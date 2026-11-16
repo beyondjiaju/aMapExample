@@ -45,6 +45,15 @@ class HtmlTagCollection {
       if (state && HtmlTag.noEvent) HtmlTag.noEvent = false;
     });
   }
+  /**设置集合内tag拖动线
+   * @param {Object} option
+   */
+  setDragLine(option) {
+    this.collection.forEach(HtmlTag => {
+      if(option.color)HtmlTag.dragLineColor = ption.color;
+      if(option.width)HtmlTag.dragLineWidth = option.width;
+    });
+  }
   /**根据索引获取集合内HtmlTag
    * @param {Number} index 索引值
    */

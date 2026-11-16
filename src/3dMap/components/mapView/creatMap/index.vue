@@ -65,13 +65,14 @@ onUnmounted(() => {
 .map-common-tools {
   position: absolute;
   top: 12px;
-  right: 372px;
+  /* 方法面板已改到地图左侧，工具回到地图右上角 */
+  right: 12px;
   z-index: 6;
 }
 #map3DCoordinates,
 #map2DCoordinates {
   position: absolute;
-  right: 360px;
+  right: 12px;
   bottom: 8px;
   z-index: 5;
 }

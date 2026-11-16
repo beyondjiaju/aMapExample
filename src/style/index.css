@@ -27,6 +27,11 @@ input {
   font-family: inherit;
 }
 
+/* 选中文字时用当前系统色铺底，字改为白色以便看清 */
+::selection {
+  color: var(--color-font-select);
+}
+
 /* 滚动条用通用色，不跟随系统色系 */
 * {
   scrollbar-width: thin;

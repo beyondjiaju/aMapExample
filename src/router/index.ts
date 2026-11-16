@@ -4,7 +4,7 @@ import ExampleShell from "@/views/ExampleShell.vue";
 export default createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: "/", redirect: "/example/draw-handler" },
+    { path: "/", redirect: "/example/html-tag" },
     { path: "/example/:id", component: ExampleShell }
   ]
 });

@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "@turf/turf": "^6.5.0",
     "cesium": "1.131.0",
     "cesium-navigation-es6": "^3.0.9",
+    "element-plus": "^2.14.8",
     "lodash": "^4.17.21",
     "mitt": "^3.0.1",
     "ol": "^10.9.0",
