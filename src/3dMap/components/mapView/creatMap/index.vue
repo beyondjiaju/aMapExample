@@ -22,7 +22,7 @@ import { mapEmitter } from "@/3dMap/interface";
 import mapDestoryOnLogout from "@/3dMap/global/MapDestoryOnLogout";
 import { setMapEmitterEvents } from "@/3dMap/global/MapEventsRegistry";
 import mapData from "@/3dMap/store/map";
-import Tool1 from "@/3dMap/tool/tool_1.vue";
+import Tool1 from "@/3dMap/tools/tool_1.vue";
 import hook from "./hook";
 
 const mapStore = mapData();
@@ -72,8 +72,8 @@ onUnmounted(() => {
 #map3DCoordinates,
 #map2DCoordinates {
   position: absolute;
-  right: 12px;
-  bottom: 8px;
+  right: 0;
+  bottom: 0;
   z-index: 5;
 }
 :deep(.ol-zoom),

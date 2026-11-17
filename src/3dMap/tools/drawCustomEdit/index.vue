@@ -454,7 +454,7 @@ defineExpose({ getData, upDataEditData });
   position: absolute;
   z-index: 10;
   background: var(--color-bg-panel);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-4);
   padding: 0 10px;
   border-radius: 5px;
   min-width: 500px;

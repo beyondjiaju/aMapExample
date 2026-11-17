@@ -1,7 +1,6 @@
 import { ref } from "vue";
 import * as Cesium from "@/3dMap/sdk/cesium";
 import {
-  navigation,
   map3DCoordinates,
   CameraHanlder as CameraHanlderCesium
 } from "@/3dMap/sdk/cesiumUtils";
@@ -25,7 +24,6 @@ export default () => {
   /** 实例创建后补齐指北针、坐标和相机句柄。没有限制配置时不收紧操作范围 */
   const bindMapHandlers = () => {
     if (viewer) {
-      navigation(viewer);
       map3DCoordinates({
         viewer,
         type: 1,

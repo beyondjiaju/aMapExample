@@ -95,7 +95,7 @@ onUnmounted(() => {
   padding: 0 15px;
 }
 :deep(.el-checkbox__inner) {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-4);
 }
 :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
   border-color: var(--color-main-1);

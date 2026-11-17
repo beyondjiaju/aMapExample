@@ -10,9 +10,9 @@
     }
   },
   "homeData": {
-    "longitude": 116.397,
-    "latitude": 39.909,
-    "height": 1009065.1470326117,
+    "longitude": 116,
+    "latitude": 40.25,
+    "height": 350000,
     "heading": 6.283185302593976,
     "pitch": -1.5707963267948966,
     "roll": 0
@@ -20,7 +20,9 @@
   "geometryShowSet": {
     "style": {
       "color": "#ffffff",
-      "alpha": 0.4
+      "alpha": 0.4,
+      "outlineColor": "#ffffff",
+      "outlineAlpha": 1
     },
     "point": {
       "maxShowHeight": 3000,

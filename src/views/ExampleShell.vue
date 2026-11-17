@@ -155,7 +155,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   background: var(--color-bg);
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border-4);
 }
 
 .shell-map {
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
   padding: 4px;
   list-style: none;
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-4);
   border-radius: 4px;
   box-shadow: var(--color-shadow);
 }

@@ -1,12 +1,13 @@
 /* 黑色系 */
 [data-theme="black"] {
   /* 主色 */
-  --color-main: #e8e8e8;
-  --color-main-1: rgba(255, 255, 255, 0.72);
+  --color-main: #202020;
+  --color-main-1: #3c3c3c;
   /* 背景 */
   --color-bg: #111111;
-  --color-bg-panel: rgba(17, 17, 17, 0.92);
-  --color-bg-3: rgba(255, 255, 255, 0.12);
+  --color-bg-panel: rgba(17, 17, 17, 0.8);
+  --color-bg-3: rgba(255, 255, 255, 0.3);
   /* 边线 */
-  --color-border: rgba(255, 255, 255, 0.22);
+  --color-border: rgba(255, 255, 255, 0.7);
+  --color-border-4: rgba(255, 255, 255, 0.1);
 }

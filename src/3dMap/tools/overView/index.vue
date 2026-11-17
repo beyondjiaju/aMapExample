@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from "vue";
-import TechButton from "../switchMode/TechButton.vue";
+import TechButton from "@/3dMap/components/techButton/index.vue";
 import mapData from "@/3dMap/store/map";
 import { olMap, viewer } from "@/3dMap/global";
 import { OverViewMap as CesiumOverViewMap } from "@/3dMap/sdk/cesiumUtils";
@@ -17,9 +17,9 @@ let overview: { destroy?: () => void } | null = null;
 const overviewOption = {
   width: 220,
   height: 140,
-  left: 292,
-  bottom: 16,
-  right: "none",
+  right: 12,
+  bottom: 25,
+  left: "none",
   top: "none",
   show: true
 };

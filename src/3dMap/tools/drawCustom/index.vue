@@ -237,7 +237,7 @@ defineExpose({ start, stop });
   li.active {
     background: var(--color-main);
     border-radius: 3px;
-    box-shadow: inset 0 0 0 1px var(--color-border);
+    box-shadow: inset 0 0 0 1px var(--color-border-4);
   }
   li[type="confirm"] {
     margin-right: 0;

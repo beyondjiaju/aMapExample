@@ -4,9 +4,10 @@
   --color-main: #146ced;
   --color-main-1: #589cff;
   /* 背景 */
-  --color-bg: rgba(6, 22, 48);
-  --color-bg-panel: rgba(6, 22, 48, 0.92);
-  --color-bg-3: rgba(0, 102, 254, 0.3);
+  --color-bg: #051834;
+  --color-bg-panel: rgba(9, 49, 107, 0.8);
+  --color-bg-3: rgba(9, 49, 107, 0.3);
   /* 边线 */
-  --color-border: rgba(64, 169, 255, 0.5);
+  --color-border: #0965efd7;
+  --color-border-4: rgba(64, 169, 255, 0.1);
 }

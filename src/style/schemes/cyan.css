@@ -8,5 +8,6 @@
   --color-bg-panel: rgba(4, 28, 32, 0.92);
   --color-bg-3: rgba(19, 168, 168, 0.3);
   /* 边线 */
-  --color-border: rgba(54, 207, 201, 0.55);
+  --color-border: rgba(54, 207, 201, 0.7);
+  --color-border-4: rgba(54, 207, 201, 0.1);
 }

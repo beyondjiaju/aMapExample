@@ -20,7 +20,7 @@ defineProps<{
 .tech-panel {
   color: var(--color-font);
   background: var(--color-bg-panel);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-4);
   border-radius: 6px;
   box-shadow: var(--color-shadow);
   backdrop-filter: blur(8px);
@@ -33,7 +33,7 @@ defineProps<{
   height: 36px;
   padding: 0 12px;
   color: var(--color-font);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-4);
   letter-spacing: 0.04em;
 }
 
