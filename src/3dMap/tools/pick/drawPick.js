@@ -13,17 +13,20 @@ import {
   getRouteDataFromAllLayerById
 } from "@/3dMap/sdk/olUtils";
 import { getAirlineUseData } from "@/3dMap/utils/mapEvents/layerTree/utils";
-import { message, mapEmitter } from "@/3dMap/interface";
+import { message } from "@/3dMap/interface";
 import mapData from "@/3dMap/store/map";
+import { geometryOpreateHightLight } from "@/3dMap/sdkUtils/geometryOpreate/geometryOpreateHightLight";
 class Pick {
   constructor(option) {
     const that = this;
     this.pointIsDrillPick = option.pointIsDrillPick || false;
     this.filterData = option.filterData || {};
     this.endCallBack = option.endCallBack || null;
-    // 高亮样式参数：供 mapEvents:airDataHightLight 使用
-    this.color = option.color;
-    this.alpha = option.alpha ?? 0.8;
+    // 图形高亮对象，以对象入参传入颜色与透明度，后续高亮沿用
+    this.newGeometryOpreateHightLight = geometryOpreateHightLight({
+      color: option.color,
+      alpha: option.alpha ?? 0.8
+    });
     // 拾取存储
     this.pickData = {};
     // 初始化绘制对象
@@ -210,19 +213,10 @@ class Pick {
         // 存储
         if (this.pickData[id]) {
           Reflect.deleteProperty(this.pickData, id);
-          mapEmitter.emit("mapEvents:airDataHightLight", {
-            hightLight: false,
-            ids: [id]
-          });
+          this.newGeometryOpreateHightLight.remove([id]);
         } else {
           this.pickData[id] = properties_use;
-          // 高亮时传入初始化配置的 color、alpha
-          mapEmitter.emit("mapEvents:airDataHightLight", {
-            hightLight: true,
-            color: this.color,
-            alpha: this.alpha,
-            ids: [id]
-          });
+          this.newGeometryOpreateHightLight.add([id]);
         }
         // 拾取自动确认返回数据存储
         endCallBackRet.push(properties_use);
@@ -243,13 +237,7 @@ class Pick {
     if (!properties_use?.id) return;
     const useId = properties_use.id;
     this.pickData[useId] = properties_use;
-    // 高亮时传入初始化配置的 color、alpha
-    mapEmitter.emit("mapEvents:airDataHightLight", {
-      hightLight: true,
-      color: this.color,
-      alpha: this.alpha,
-      ids: [useId]
-    });
+    this.newGeometryOpreateHightLight.add([useId]);
   }
   /**
    * 按当前 mapMode 移除拾取高亮
@@ -259,10 +247,7 @@ class Pick {
     if (!id) return;
     const properties_use = this.getPropertiesById(id);
     const useId = properties_use?.id || id;
-    mapEmitter.emit("mapEvents:airDataHightLight", {
-      hightLight: false,
-      ids: [useId]
-    });
+    this.newGeometryOpreateHightLight.remove([useId]);
     Reflect.deleteProperty(this.pickData, useId);
   }
   /**
@@ -309,6 +294,7 @@ class Pick {
   destroy() {
     this.stop();
     this.removeAll();
+    this.newGeometryOpreateHightLight?.destroy();
     this.pickData = null;
     for (let mode in this.newDrawHandlerByMode) {
       this.newDrawHandlerByMode[mode].destroy();

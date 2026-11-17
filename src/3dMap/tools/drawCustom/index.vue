@@ -79,7 +79,6 @@
 <script setup lang="ts">
 import { ref, watch, toRaw, onBeforeMount, onMounted, onUnmounted } from "vue";
 import { defaultDrawData } from "./config";
-import { mapEmitter } from "@/3dMap/interface";
 // component
 import DrawCustomEdit from "@/3dMap/tools/drawCustomEdit/index.vue";
 import ToolSelect from "@/3dMap/components/toolSelect/index.vue";
@@ -152,7 +151,6 @@ const {
   activeDrawType,
   startEdit,
   drawCustomEdit,
-  setDrawHandlerByMode,
   newDrawHandlerByModeDestroy,
   start,
   stop,
@@ -165,10 +163,8 @@ const {
   inputCancel,
   inputConfirm
 } = Hook(emits, props);
-let mapModeChangeDrawCustomUpdataOff;
 // Function
 onBeforeMount(() => {
-  setDrawHandlerByMode();
   // 拾取类型设置
   if (props.types.length < 1) {
     defaultDrawData.forEach(item => {
@@ -186,25 +182,12 @@ onBeforeMount(() => {
   }
   // 绘制结束开启编辑
   startEdit.value = props.endStartEdit;
-  mapModeChangeDrawCustomUpdataOff = mapEmitter.on(
-    "mapEvents:mapModeChangeDrawCustomUpdata",
-    () => {
-      const modeDrawType = activeDrawType.value;
-      stop();
-      setDrawHandlerByMode();
-      if (!modeDrawType) return;
-      start(modeDrawType);
-    }
-  );
 });
 onMounted(() => {
   if (props.autoStart) start(props.autoStartType);
 });
 onUnmounted(() => {
   newDrawHandlerByModeDestroy();
-  if (mapModeChangeDrawCustomUpdataOff) {
-    mapModeChangeDrawCustomUpdataOff();
-  }
 });
 // defineExpose
 defineExpose({ start, stop });

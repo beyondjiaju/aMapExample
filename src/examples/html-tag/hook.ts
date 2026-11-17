@@ -1,30 +1,17 @@
 import { onBeforeUnmount, ref, watch } from "vue";
-import * as Cesium from "@/3dMap/sdk/cesium";
-import * as cesiumSdk from "@/3dMap/sdk/cesiumUtils";
-import * as olSdk from "@/3dMap/sdk/olUtils";
-import mapData from "@/3dMap/store/map";
-import { flyToHome, olMap, viewer } from "@/3dMap/global";
+import { flyToHome } from "@/3dMap/global";
 import { mapRuntime } from "@/3dMap/components/mapView/creatMap/createMaps";
+import { HtmlTagCollection } from "@/3dMap/sdkUtils/htmlTag";
 import { createTagPoints } from "./data";
 
-type TagCollection = {
-  setVisible: (state: boolean) => void;
-  setDrag: (state: boolean) => void;
-  setCollision: (state: boolean) => void;
-  setDragLine: (option: { color?: string; width?: number }) => void;
-  destroy: () => void;
-};
-
-/** 进入示例即创建标签集合，并把随机点位全部加入集合 */
+/** 进入示例即创建通用标牌集合，二三维切换由集合内部处理 */
 export function useHtmlTag() {
-  const mapStore = mapData();
   const visible = ref(true);
   const drag = ref(false);
   const collision = ref(true);
   const lineColor = ref("#ff0000");
   const lineWidth = ref(1.5);
-  let api: TagCollection | null = null;
-  let token = 0;
+  let api: HtmlTagCollection | null = null;
 
   function dispose() {
     api?.destroy();
@@ -41,29 +28,15 @@ export function useHtmlTag() {
   }
 
   function mount() {
-    const runToken = ++token;
-    dispose();
-    if (!mapRuntime.ready || runToken !== token) return;
-    const is2d = mapStore.mapModeIs2D;
-    const host = is2d ? olMap : viewer;
-    if (!host || (!is2d && viewer?.isDestroyed?.())) return;
-    const Tag = is2d ? olSdk.HtmlTag : cesiumSdk.HtmlTag;
-    const collection: TagCollection & { add: (tag: unknown) => void } = is2d
-      ? new olSdk.HtmlTagCollection(olMap)
-      : new cesiumSdk.HtmlTagCollection(viewer);
+    if (!mapRuntime.ready || api) return;
+    api = new HtmlTagCollection();
     createTagPoints().forEach(point => {
-      const position = is2d
-        ? [point.lon, point.lat]
-        : Cesium.Cartesian3.fromDegrees(point.lon, point.lat);
-      collection.add(
-        new Tag(host, {
-          position,
-          html: point.html,
-          id: point.id
-        })
-      );
+      api?.add({
+        position: [point.lon, point.lat],
+        html: point.html,
+        id: point.id
+      });
     });
-    api = collection;
     syncControls();
     // 示例数据就绪后回到配置的初始视野
     flyToHome();
@@ -88,13 +61,12 @@ export function useHtmlTag() {
   }
 
   watch(
-    () => [mapStore.mapModeIs2D, mapRuntime.ready] as const,
+    () => mapRuntime.ready,
     () => mount(),
     { immediate: true }
   );
 
   onBeforeUnmount(() => {
-    token += 1;
     dispose();
   });
 

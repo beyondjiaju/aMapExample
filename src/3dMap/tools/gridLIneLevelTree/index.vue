@@ -7,11 +7,10 @@
   />
 </template>
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from "vue";
-import { mapEmitter } from "@/3dMap/interface";
+import { ref, computed, watch } from "vue";
 // store
 /**叠加网格 */
-import gridLevelLines from "@/3dMap/utils/business/airspaceGridLevelLines";
+import gridLevelLines from "@/3dMap/sdkUtils/airspaceGridLevelLines";
 const props = {
   label: "name",
   children: "children"
@@ -73,15 +72,6 @@ const treeCheck = (checkedNodes, checkedKeys) => {
   });
   gridLevelLines.loadGridByLevels(levels);
 };
-const gridLIneLevelTreeUpdataMapModeOff = mapEmitter.on(
-  "mapEvents:mapModeChangeGridLIneLevelTreeUpdata",
-  () => {
-    gridLevelLines.upDataGridByCheckedLevels();
-  }
-);
-onUnmounted(() => {
-  gridLIneLevelTreeUpdataMapModeOff();
-});
 </script>
 <style scoped lang="scss">
 .style-panel {

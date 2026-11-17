@@ -12,7 +12,7 @@ class MouseGetAirData {
     this.allEvents = {};
     // 2\3d切换更新
     this.mapEmitterOff = mapEmitter.on(
-      "mapEvents:mapModeChangeMouseOpreate",
+      "mapEvents:mapModeChangeSetSdkUtilsByCurrentMode",
       () => {
         this.mouseGetAirDataByMode?.destroy();
         this.mouseGetAirDataByMode = null;

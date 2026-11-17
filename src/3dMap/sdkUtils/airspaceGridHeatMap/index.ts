@@ -71,7 +71,7 @@ class AirspaceGridHeatMap {
     // 先准备共享数据，再按当前 mode 创建实现
     void this.bootstrap();
     this.mapEmitterOff = mapEmitter.on(
-      "mapEvents:mapModeChangeAirspaceGridHeatMap",
+      "mapEvents:mapModeChangeSetSdkUtilsByCurrentMode",
       () => {
         this.handler?.destroy();
         this.handler = null;

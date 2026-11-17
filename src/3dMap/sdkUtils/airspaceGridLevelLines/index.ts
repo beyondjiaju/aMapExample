@@ -1,6 +1,7 @@
 import { viewer, olMap } from "@/3dMap/global";
-import { LevelGridCesium } from "@/3dMap/utils/business/airspaceGridLevelLines/cameraGrid/cesium";
-import { LevelGridOl } from "@/3dMap/utils/business/airspaceGridLevelLines/cameraGrid/ol";
+import { mapEmitter } from "@/3dMap/interface";
+import { LevelGridCesium } from "@/3dMap/sdkUtils/airspaceGridLevelLines/cameraGrid/cesium";
+import { LevelGridOl } from "@/3dMap/sdkUtils/airspaceGridLevelLines/cameraGrid/ol";
 import mapData from "@/3dMap/store/map";
 const gridLevelKey = {
   "30分": 1,
@@ -12,9 +13,23 @@ const gridLevelKey = {
   "5秒": 7,
   "1秒": 8
 };
-export default {
-  cameraGrid: {},
-  checkedLevels: [],
+/** 二三维网格层级线。按当前模式创建网格，并在切换时停掉另一边 */
+class AirspaceGridLevelLines {
+  cameraGrid: any;
+  checkedLevels: any[];
+  mapEmitterOff: any;
+  constructor() {
+    this.cameraGrid = {};
+    this.checkedLevels = [];
+    this.mapEmitterOff = null;
+    // 模式切换后按已选层级，把网格同步到当前地图
+    this.mapEmitterOff = mapEmitter.on(
+      "mapEvents:mapModeChangeSetSdkUtilsByCurrentMode",
+      () => {
+        this.upDataGridByCheckedLevels();
+      }
+    );
+  }
   loadGridByLevels(levels = []) {
     const mapMode = mapData().mapMode;
     // 根据地图类型创建
@@ -55,9 +70,13 @@ export default {
     });
     // 记录当前level
     this.checkedLevels = levels;
-  },
+  }
   upDataGridByCheckedLevels() {
     // 根据记录重新加载
     this.loadGridByLevels(this.checkedLevels);
   }
-};
+}
+/** 保持原调用方式：直接使用这一个网格对象 */
+const airspaceGridLevelLines = new AirspaceGridLevelLines();
+export { AirspaceGridLevelLines, airspaceGridLevelLines, gridLevelKey };
+export default airspaceGridLevelLines;

@@ -16,13 +16,8 @@
   </ul>
 </template>
 <script setup lang="ts">
-import { ref, onBeforeMount, onUnmounted } from "vue";
-import { mapEmitter } from "@/3dMap/interface";
-// map
-import { viewer, olMap } from "@/3dMap/global";
-import { MeasureHandler as MeasureHandlerCesium } from "@/3dMap/sdk/cesiumUtils";
-import { MeasureHandler as MeasureHandlerOl } from "@/3dMap/sdk/olUtils";
-import mapData from "@/3dMap/store/map";
+import { ref, onUnmounted } from "vue";
+import { Measure } from "@/3dMap/sdkUtils/measure";
 // img
 import pointImg from "./image/point.png";
 import pointActiveImg from "./image/point-active.png";
@@ -59,54 +54,16 @@ const measureData = ref([
     imageActive: clearActiveImg
   }
 ]);
-let newMeasureHandler = {};
-const measureOptions = {
-  endType: "contextmenu",
-  moveEvent: true
-};
-const measureChange = type => {
-  const mapMode = mapData().mapMode;
-  if (!newMeasureHandler[mapMode]) {
-    if (mapMode === "cesium")
-      newMeasureHandler[mapMode] = new MeasureHandlerCesium(
-        viewer,
-        measureOptions
-      );
-    if (mapMode === "ol")
-      newMeasureHandler[mapMode] = new MeasureHandlerOl(olMap, measureOptions);
+const measure = new Measure({
+  onTypeChange: type => {
+    measureType.value = type;
   }
-  if (type == "clear" || (measureType.value && measureType.value == type)) {
-    for (let key in newMeasureHandler) {
-      newMeasureHandler[key].clear(type);
-      newMeasureHandler[key].stop(type);
-    }
-    measureType.value = "";
-    return;
-  }
-  newMeasureHandler[mapMode].start(type);
-  measureType.value = type;
-};
-let mapModeChangeMeasureHandlerUpdataOff;
-onBeforeMount(() => {
-  mapModeChangeMeasureHandlerUpdataOff = mapEmitter.on(
-    "mapEvents:mapModeChangeMeasureHandlerUpdata",
-    () => {
-      const modeMeasureType = measureType.value;
-      if (!modeMeasureType) return;
-      measureChange("clear");
-      measureChange(modeMeasureType);
-    }
-  );
 });
+const measureChange = type => {
+  measure.change(type);
+};
 onUnmounted(() => {
-  for (let mode in newMeasureHandler) {
-    if (newMeasureHandler[mode]) {
-      newMeasureHandler[mode].destroy();
-    }
-  }
-  newMeasureHandler = {};
-  if (mapModeChangeMeasureHandlerUpdataOff)
-    mapModeChangeMeasureHandlerUpdataOff();
+  measure.destroy();
 });
 </script>
 <style lang="scss" scoped>

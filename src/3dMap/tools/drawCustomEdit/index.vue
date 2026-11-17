@@ -171,7 +171,7 @@ import { InfoFilled } from "@element-plus/icons-vue";
 import { cloneDeep, message } from "@/3dMap/interface";
 import { titleData } from "./config";
 import { shapeCoordinates } from "@/3dMap/sdk/cesiumUtils";
-import { DrawCustomEdit } from "@/3dMap/utils/business/drawCustom";
+import { DrawCustomEdit } from "@/3dMap/sdkUtils/drawCustom";
 import { locateToCoordinates } from "@/3dMap/sdk/publicUtils";
 // component
 import EditDefault from "./EditDefault.vue";

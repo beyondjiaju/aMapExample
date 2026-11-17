@@ -1,12 +1,9 @@
 // map
 import { ref } from "vue";
 import * as Cesium from "@/3dMap/sdk/cesium";
-import { viewer, olMap } from "@/3dMap/global";
-import {
-  coordinateConversionTool,
-  DrawHandler as DrawHandlerCesium
-} from "@/3dMap/sdk/cesiumUtils";
-import { DrawHandler as DrawHandlerOl } from "@/3dMap/sdk/olUtils";
+import { viewer } from "@/3dMap/global";
+import { coordinateConversionTool } from "@/3dMap/sdk/cesiumUtils";
+import { DrawCustom } from "@/3dMap/sdkUtils/drawCustom";
 import { cloneDeep } from "@/3dMap/interface";
 import { editDataByType } from "./config";
 import mapData from "@/3dMap/store/map";
@@ -18,7 +15,7 @@ export default (emits, props) => {
     panelShow: false,
     properties: {}
   });
-  let newDrawHandlerByMode;
+  let drawCustom;
   /**获取坐标字符串 */
   const getDegreesString = (lon, lat) => {
     return coordinateConversionTool.degreesToDegrees60(lon, lat, true);
@@ -84,7 +81,7 @@ export default (emits, props) => {
     // 停止绘制
     if (!props.continuity) stop();
     // 删除图形
-    newDrawHandlerByMode.remove(shap);
+    drawCustom.remove(shap);
     setTimeout(() => {
       if (startEdit.value) {
         if (properties.type == "rectangle") properties.type = "polygon";
@@ -95,17 +92,10 @@ export default (emits, props) => {
       emits("confirm", properties);
     }, 300);
   };
-  /**初始化绘制工具 */
-  const setDrawHandlerByMode = () => {
-    const mapMode = mapData().mapMode;
-    if (mapMode === "cesium") {
-      newDrawHandlerByMode = new DrawHandlerCesium(viewer);
-    }
-    if (mapMode === "ol") {
-      newDrawHandlerByMode = new DrawHandlerOl(olMap);
-    }
-    newDrawHandlerByMode.drawFinished.addEventListener(drawFinishEndEvent);
-  };
+  /** 通用绘制对象在初始化时创建，并自行监听二三维切换 */
+  drawCustom = new DrawCustom({
+    onDrawFinished: drawFinishEndEvent
+  });
   /**开启绘制
    * @param {String} draw_type
    * @param {Object} draw_options
@@ -117,9 +107,10 @@ export default (emits, props) => {
       moveEvent: true
     }
   ) => {
-    newDrawHandlerByMode.clear();
+    drawCustom.clear();
     if (type == "clear") {
       activeDrawType.value = "";
+      drawCustom.setDrawType("");
       return;
     }
     if (activeDrawType.value === type) {
@@ -127,9 +118,10 @@ export default (emits, props) => {
       return;
     }
     activeDrawType.value = type ? type : drawData.value[0].type;
+    drawCustom.setDrawType(activeDrawType.value, options);
     if (type == "input") {
       // 停止
-      newDrawHandlerByMode.stop();
+      drawCustom.stop();
       drawData.value.forEach(list => {
         if (
           !activeInputType.value &&
@@ -141,17 +133,18 @@ export default (emits, props) => {
       return;
     }
     // 绘制
-    newDrawHandlerByMode.start(activeDrawType.value, options);
+    drawCustom.start(activeDrawType.value, options);
   };
   /**停止绘制 */
   const stop = () => {
     activeDrawType.value = "";
+    drawCustom.setDrawType("");
     // 停止
-    newDrawHandlerByMode.stop();
+    drawCustom.stop();
   };
   /**注销 */
   const newDrawHandlerByModeDestroy = () => {
-    newDrawHandlerByMode.destroy();
+    drawCustom.destroy();
   };
   /**取消 */
   const cancel = () => {
@@ -201,7 +194,6 @@ export default (emits, props) => {
     activeDrawType,
     startEdit,
     drawCustomEdit,
-    setDrawHandlerByMode,
     newDrawHandlerByModeDestroy,
     start,
     stop,

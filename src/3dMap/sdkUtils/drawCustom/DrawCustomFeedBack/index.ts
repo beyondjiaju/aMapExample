@@ -13,7 +13,7 @@ class DrawCustomFeedBack {
     this.setDrawHandlerFeedBackByMode();
     // 2\3d切换更新
     this.mapEmitterOff = mapEmitter.on(
-      "mapEvents:mapModeChangeDrawCustomFeedBackUpdata",
+      "mapEvents:mapModeChangeSetSdkUtilsByCurrentMode",
       () => {
         this.newDrawHandlerFeedBackByMode?.destroy();
         this.newDrawHandlerFeedBackByMode = null;

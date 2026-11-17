@@ -1,20 +1,11 @@
 import { onBeforeUnmount, ref, watch } from "vue";
-import * as cesiumSdk from "@/3dMap/sdk/cesiumUtils";
-import * as olSdk from "@/3dMap/sdk/olUtils";
-import mapData from "@/3dMap/store/map";
-import { flyToHome, olMap, viewer } from "@/3dMap/global";
+import { flyToHome } from "@/3dMap/global";
 import { mapRuntime } from "@/3dMap/components/mapView/creatMap/createMaps";
+import { HeatMap2D } from "@/3dMap/sdkUtils/heatMap2D";
 import { HEAT_STYLE, heatData } from "./data";
 
-type HeatApi = {
-  add: (data: unknown, style: typeof HEAT_STYLE) => void;
-  setMouseLookAt: (mouseLookAt: "move" | "click" | null) => void;
-  destroy: () => void;
-};
-
-/** 进入示例即用测试数据铺一层热力，离开或切换二三维时注销 */
+/** 进入示例即用测试数据铺一层热力，二三维切换由通用对象内部处理 */
 export function useHeatMap() {
-  const mapStore = mapData();
   const visible = ref(true);
   const radius = ref(HEAT_STYLE.radius);
   const maxOpacity = ref(HEAT_STYLE.maxOpacity);
@@ -26,8 +17,7 @@ export function useHeatMap() {
   const mouseValue = ref<number | null>(null);
   // 点位只生成一次，改样式时仍用这批数据重铺
   const points = heatData();
-  let api: HeatApi | null = null;
-  let token = 0;
+  let api: HeatMap2D | null = null;
 
   function dispose() {
     api?.destroy();
@@ -42,13 +32,8 @@ export function useHeatMap() {
   }
 
   function createApi() {
-    const is2d = mapStore.mapModeIs2D;
-    if (is2d) {
-      if (!olMap) return null;
-      return new olSdk.HeatMap2D(olMap, mouseOptions()) as HeatApi;
-    }
-    if (!viewer || viewer.isDestroyed?.()) return null;
-    return new cesiumSdk.HeatMap2D(viewer, mouseOptions()) as HeatApi;
+    if (!mapRuntime.ready) return null;
+    return new HeatMap2D(mouseOptions());
   }
 
   /** 鼠标落点回传当前位置数值，区域外为 null */
@@ -90,9 +75,7 @@ export function useHeatMap() {
   }
 
   function mount() {
-    const runToken = ++token;
-    dispose();
-    if (!mapRuntime.ready || runToken !== token) return;
+    if (!mapRuntime.ready || api) return;
     api = createApi();
     if (api && visible.value) api.add(points, currentStyle());
     // 示例数据就绪后回到配置的初始视野
@@ -100,13 +83,12 @@ export function useHeatMap() {
   }
 
   watch(
-    () => [mapStore.mapModeIs2D, mapRuntime.ready] as const,
+    () => mapRuntime.ready,
     () => mount(),
     { immediate: true }
   );
 
   onBeforeUnmount(() => {
-    token += 1;
     dispose();
   });
 

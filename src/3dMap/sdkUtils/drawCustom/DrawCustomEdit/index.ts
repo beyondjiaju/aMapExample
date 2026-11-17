@@ -32,7 +32,7 @@ class DrawCustomEdit {
     this.setDrawHandlerEditByMode(newOption, endCallback);
     // 2\3d切换更新
     this.mapEmitterOff = mapEmitter.on(
-      "mapEvents:mapModeChangeDrawCustomEditUpdata",
+      "mapEvents:mapModeChangeSetSdkUtilsByCurrentMode",
       () => {
         this.newDrawHandlerEditByMode?.clear();
         this.newDrawHandlerEditByMode = null;

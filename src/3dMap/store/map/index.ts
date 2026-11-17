@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { store } from "@/store";
+import { emitSdkUtilsMapModeChange } from "./actions/emitSdkUtilsMapModeChange";
 
 /**
  * 与 hatc-xt-front-core 地图仓库对齐的最小状态。
@@ -27,6 +28,7 @@ export const useMapStore = defineStore({
     }
   },
   actions: {
+    emitSdkUtilsMapModeChange,
     /** 切换地图显隐 */
     setMapVisible(state: boolean) {
       this.mapVisible = state;
@@ -43,6 +45,15 @@ export const useMapStore = defineStore({
       };
     }
   }
+});
+
+const mapStore = useMapStore(store);
+let prevMapModeIs2D = mapStore.mapModeIs2D;
+// mapMode 一变就执行上面的统一通知
+mapStore.$subscribe((_mutation, state) => {
+  if (state.mapModeIs2D === prevMapModeIs2D) return;
+  prevMapModeIs2D = state.mapModeIs2D;
+  mapStore.emitSdkUtilsMapModeChange();
 });
 
 export default function mapData() {
