@@ -58,8 +58,9 @@ class ShapeCoordinates {
       ];
     }
     const point = turf.point([center_new[0], center_new[1]]);
+    // 半径单位与圆形一致为米，换算成千米供 turf 使用
     const destination = turf.rhumbDestination(point, radius * 0.001, angle, {
-      units: "miles"
+      units: "kilometers"
     });
     const position = destination.geometry.coordinates;
     if (type == "catresian") {
@@ -147,10 +148,8 @@ class ShapeCoordinates {
       point_end = turf.point(end_degrees),
       angle_first = turf.bearing(point_first, point_second),
       angle_second = turf.bearing(point_first, point_end);
-    const radius = turf.distance(point_first, point_second, {
-      units: "miles",
-      steps: 360
-    });
+    // 半径与圆形一致，取圆心到第二点的空间距离（米）
+    const radius = Cesium.Cartesian3.distance(first_new, second_new);
     const newPositions = [first_degrees];
     if (angle_first < 0) {
       angle_first = 360 + angle_first;
@@ -162,10 +161,16 @@ class ShapeCoordinates {
       angle_second = 360 + angle_second;
     }
     for (let angle = angle_first; angle <= angle_second; angle += 1) {
-      const destination = turf.rhumbDestination(point_first, radius, angle, {
-        units: "miles",
-        steps: 360
-      });
+      // 米换算成千米，避免沿用英里导致弧长偏差
+      const destination = turf.rhumbDestination(
+        point_first,
+        radius * 0.001,
+        angle,
+        {
+          units: "kilometers",
+          steps: 360
+        }
+      );
       newPositions.push(destination.geometry.coordinates);
     }
     newPositions.push(first_degrees);
@@ -173,7 +178,7 @@ class ShapeCoordinates {
     if (angle_second > 360) angle_second -= 360;
     const ret = {
       positions: newPositions,
-      radius: radius * 1000,
+      radius: radius,
       startAngle: angle_first,
       endAngle: angle_second
     };
@@ -204,7 +209,8 @@ class ShapeCoordinates {
     }
     const point = turf.point([position[0], position[1]]),
       turfOptions = {
-        units: "miles",
+        // 入参半径为米，与圆形一致，换算成千米
+        units: "kilometers",
         steps: 360
       };
     const angle = Math.abs(startAngle - endAngle);
@@ -278,7 +284,7 @@ class ShapeCoordinates {
       angle_first = turf.bearing(point_first, point_second),
       angle_second = turf.bearing(point_first, point_end);
     const radius = turf.distance(point_first, point_second, {
-      units: "miles",
+      units: "kilometers",
       steps: 360
     });
     const newPositions = [first_degrees];
@@ -293,7 +299,7 @@ class ShapeCoordinates {
     }
     for (let angle = angle_first; angle <= angle_second; angle += 1) {
       const destination = turf.rhumbDestination(point_first, radius, angle, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       });
       newPositions.push(destination.geometry.coordinates);
@@ -328,7 +334,6 @@ class ShapeCoordinates {
     // 坐标转换 获取degrees
     const first_cartographic = Cesium.Cartographic.fromCartesian(first_new),
       second_cartographic = Cesium.Cartographic.fromCartesian(second_new),
-      end_cartographic = Cesium.Cartographic.fromCartesian(end_new),
       first_degrees = [
         Cesium.Math.toDegrees(first_cartographic.longitude),
         Cesium.Math.toDegrees(first_cartographic.latitude)
@@ -336,20 +341,14 @@ class ShapeCoordinates {
       second_degrees = [
         Cesium.Math.toDegrees(second_cartographic.longitude),
         Cesium.Math.toDegrees(second_cartographic.latitude)
-      ],
-      end_degrees = [
-        Cesium.Math.toDegrees(end_cartographic.longitude),
-        Cesium.Math.toDegrees(end_cartographic.latitude)
       ];
     // turf pint angle
     const point_first = turf.point(first_degrees),
       point_second = turf.point(second_degrees),
-      point_end = turf.point(end_degrees),
       angle_first = turf.bearing(point_first, point_second);
-    const radius = turf.distance(point_second, point_end, {
-      units: "miles",
-      steps: 360
-    });
+    // 半径与圆形一致，取第二点到端点的空间距离（米），turf 按千米使用
+    const radiusMeter = Cesium.Cartesian3.distance(second_new, end_new);
+    const radius = radiusMeter * 0.001;
     const angle_left = angle_first + 90;
     const angle_right = angle_first - 90;
     // 根据方向缓冲rectangle
@@ -358,7 +357,7 @@ class ShapeCoordinates {
         radius,
         angle_left,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -367,7 +366,7 @@ class ShapeCoordinates {
         radius,
         angle_left,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -379,7 +378,7 @@ class ShapeCoordinates {
         radius,
         angle_right,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -388,7 +387,7 @@ class ShapeCoordinates {
         radius,
         angle_right,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -407,11 +406,11 @@ class ShapeCoordinates {
     ];
     // 计算圆中心点及两侧圆polygon
     const first_circle = turf.buffer(point_first, radius, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       }),
       second_circle = turf.buffer(point_second, radius, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       }),
       first_circle_coordinates = first_circle.geometry.coordinates,
@@ -426,7 +425,7 @@ class ShapeCoordinates {
       union2 = turf.union(union1, polygon3);
     const ret = {
       positions: union2.geometry.coordinates[0],
-      radius: radius * 1000
+      radius: radiusMeter
     };
     return ret;
   }
@@ -438,6 +437,7 @@ class ShapeCoordinates {
   getRectangleCirclePositionsByRadius(option) {
     const first = option.first,
       second = option.second,
+      // 入参半径为米，与圆形一致，换算成千米
       radius = option.radius * 0.001;
     // 坐标转换 获取degrees
     let first_degrees, second_degrees;
@@ -471,7 +471,7 @@ class ShapeCoordinates {
         radius,
         angle_left,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -480,7 +480,7 @@ class ShapeCoordinates {
         radius,
         angle_left,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -492,7 +492,7 @@ class ShapeCoordinates {
         radius,
         angle_right,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -501,7 +501,7 @@ class ShapeCoordinates {
         radius,
         angle_right,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
@@ -520,11 +520,11 @@ class ShapeCoordinates {
     ];
     // 计算圆中心点及两侧圆polygon
     const first_circle = turf.buffer(point_first, radius, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       }),
       second_circle = turf.buffer(point_second, radius, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       }),
       first_circle_coordinates = first_circle.geometry.coordinates,
@@ -583,7 +583,7 @@ class ShapeCoordinates {
       angle_second = turf.bearing(point_second, point_end),
       angle;
     const radius = turf.distance(point_second, point_end, {
-      units: "miles",
+      units: "kilometers",
       steps: 360
     });
     if (angle_first < 0) {
@@ -604,12 +604,12 @@ class ShapeCoordinates {
         radius,
         angle,
         {
-          units: "miles",
+          units: "kilometers",
           steps: 360
         }
       ),
       point_second_offset = turf.rhumbDestination(point_second, radius, angle, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       }),
       first_degrees_offset = point_first_offset.geometry.coordinates,
@@ -627,11 +627,11 @@ class ShapeCoordinates {
     const first_center = turf.midpoint(point_first, point_first_offset),
       second_center = turf.midpoint(point_second, point_second_offset),
       first_circle = turf.buffer(first_center, radius / 2, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       }),
       second_circle = turf.buffer(second_center, radius / 2, {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       }),
       first_circle_coordinates = first_circle.geometry.coordinates,

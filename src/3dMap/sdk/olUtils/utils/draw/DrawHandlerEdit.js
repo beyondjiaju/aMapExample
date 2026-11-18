@@ -2,7 +2,7 @@ import * as Cesium from "@/3dMap/sdk/cesium";
 import * as ol from "@/3dMap/sdk/ol";
 import DragPan from "ol/interaction/DragPan";
 import { getColorAlpha } from "../CorlorTool";
-import { message } from "@/3dMap/interface";
+import { message } from "@/utils/message";
 import {
   PolylineAntialiasingMaterialProperty,
   shapeCoordinates
@@ -388,6 +388,8 @@ class DrawHandlerEdit {
             );
             this.option.startAngle = ret.startAngle;
             this.option.endAngle = ret.endAngle;
+            // 更新半径
+            this.option.radius = ret.radius;
             that.feature
               .getGeometry()
               .setCoordinates([[...ret.positions, ret.positions[0]]]);
@@ -724,6 +726,7 @@ class DrawHandlerEdit {
         // 更新属性信息
         this.option.startAngle = ret.startAngle;
         this.option.endAngle = ret.endAngle;
+        this.option.radius = ret.radius;
         coordinates = ret.positions;
       }
       if (this.option.type == "rectangleCircle") {

@@ -52,7 +52,7 @@
       <MapView>
         <template #content>
           <!-- 方法面板挂在地图内，贴在地图左侧 -->
-          <TechPanel class="method-panel" :title="current?.name || '方法'">
+          <TechPanel class="method-panel" :style="panelStyle" :title="current?.name || '方法'">
             <component :is="currentComponent" v-if="currentComponent" />
           </TechPanel>
         </template>
@@ -85,6 +85,13 @@ const currentId = computed(() => String(route.params.id || ""));
 const current = computed(() => findExample(currentId.value));
 /** 当前要放进方法面板的示例组件 */
 const currentComponent = computed(() => current.value?.component ?? null);
+/** 未配置宽度的示例仍用原来的 360 */
+const DEFAULT_PANEL_WIDTH = 360;
+const panelStyle = computed(() => {
+  const width = Number(current.value?.panelWidth);
+  const panelWidth = Number.isFinite(width) && width > 0 ? width : DEFAULT_PANEL_WIDTH;
+  return { width: `${panelWidth}px` };
+});
 
 const visibleGroups = computed(() => {
   const text = keyword.value.trim().toLowerCase();
@@ -282,7 +289,6 @@ onBeforeUnmount(() => {
   top: 12px;
   left: 12px;
   z-index: 99;
-  width: 348px;
   display: flex;
   flex-direction: column;
 }

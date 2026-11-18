@@ -17,6 +17,7 @@ export * from "./utils/RunFeature";
 export * from "./utils/CanvasToImage";
 export * from "./utils/CameraHanlder";
 export * from "./utils/KeyDownControlCamera";
+export * from "./utils/AnimationPath";
 export * from "./utils/HollowCylinder";
 export * from "./utils/overViewMap";
 
