@@ -40,16 +40,21 @@ class LevelGridOl {
   gridLines: any;
   gridLabels: any;
   showPolygon: any;
+  color: any;
+  destroyed: boolean;
   constructor(olMap, option = null) {
     const newOption = Object.assign(
       {
-        level: null
+        level: null,
+        color: "#ffffff"
       },
       option
     );
     this.olMap = olMap;
     this.level = newOption.level;
+    this.color = newOption.color;
     this.gridCodeVisible = true;
+    this.destroyed = false;
     this.showPolygon = new ol.VectorLayer({
       source: new ol.VectorSource()
     });
@@ -62,6 +67,26 @@ class LevelGridOl {
       source: new ol.VectorSource()
     });
     this.olMap.addLayer(this.gridLabels);
+  }
+  /** 更新已绘制网格线和标注颜色，后续新建也沿用该颜色 */
+  setColor(color) {
+    if (!color) return;
+    this.color = color;
+    this.gridLabels
+      .getSource()
+      .getFeatures()
+      .forEach(feature => {
+        const text = feature.getStyle()?.getText?.();
+        text?.getFill?.()?.setColor(color);
+        feature.changed();
+      });
+    this.gridLines
+      .getSource()
+      .getFeatures()
+      .forEach(feature => {
+        feature.getStyle()?.getStroke?.()?.setColor(color);
+        feature.changed();
+      });
   }
   /**设置层级
    * @param { Number } level
@@ -140,6 +165,24 @@ class LevelGridOl {
     if (this.listener) this.olMap.removeEventListener("moveend", this.listener);
     this.gridLines.getSource().clear();
     this.gridLabels.getSource().clear();
+  }
+  /** 注销当前层级：停掉监听后直接移除图层，避免先清空再移除触发渲染报错 */
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    if (this.listener && this.olMap) {
+      this.olMap.removeEventListener("moveend", this.listener);
+    }
+    this.listener = undefined;
+    const map = this.olMap;
+    const layers = [this.showPolygon, this.gridLines, this.gridLabels];
+    this.showPolygon = undefined;
+    this.gridLines = undefined;
+    this.gridLabels = undefined;
+    if (!map) return;
+    layers.forEach(layer => {
+      if (layer) map.removeLayer(layer);
+    });
   }
   /**
    * 通过区域和网格级别获取对应网格参考线
@@ -366,7 +409,7 @@ class LevelGridOl {
         text: new ol.style.Text({
           text,
           font: "bold 20px sans-serif",
-          fill: new ol.style.Fill({ color: "#ffffff" }),
+          fill: new ol.style.Fill({ color: this.color }),
           stroke: new ol.style.Stroke({ color: "#000000", width: 2 }),
           scale: (10 - this.level) / 10 < 0.5 ? 0.5 : (10 - this.level) / 10
         })
@@ -382,7 +425,7 @@ class LevelGridOl {
     });
     feature.setStyle(
       new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#ffffff", width: 1 })
+        stroke: new ol.style.Stroke({ color: this.color, width: 1 })
       })
     );
     this.gridLines.getSource().addFeature(feature);

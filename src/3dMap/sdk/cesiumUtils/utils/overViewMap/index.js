@@ -1,4 +1,5 @@
 import * as Cesium from "@/3dMap/sdk/cesium";
+import { PolylineAntialiasingMaterialProperty } from "../material/PolylineAntialiasingMaterialProperty";
 import worldImg from "./images/earth_color_low_4096.jpg";
 /**鹰眼 */
 class OverViewMap {
@@ -18,6 +19,7 @@ class OverViewMap {
     };
     this.options = Object.assign(defaultOptions, options);
     this.show = this.options.show;
+    this.interacting = false;
     // 鹰眼
     this.overMapData = {};
     this.addListener();
@@ -26,6 +28,7 @@ class OverViewMap {
     const that = this;
     if (!that.listener) {
       that.listener = () => {
+        if (that.interacting) return;
         // 初始化鹰眼视图
         if (!that.overMapData.dom) {
           const div = document.createElement("div");
@@ -61,6 +64,8 @@ class OverViewMap {
           });
           that.overMapData.viewer.cesiumWidget.creditContainer.style.display =
             "none";
+          that.overMapData.viewer.scene.screenSpaceCameraController.enableInputs = false;
+          that.bindPointer();
           // 添加底图
           Cesium.SingleTileImageryProvider.fromUrl(worldImg).then(provider => {
             that.overMapData.viewer.imageryLayers.addImageryProvider(provider);
@@ -119,25 +124,72 @@ class OverViewMap {
           heading = that.viewer.camera.heading,
           pitch = that.viewer.camera.pitch,
           roll = that.viewer.camera.roll;
-        that.rectangle_coordinates = that.viewer.camera.computeViewRectangle();
+        const carto_p = Cesium.Cartographic.fromCartesian(position);
+        const heightLimit = 2000 * 1000;
+        if (carto_p.height < heightLimit) {
+          const rect = that.viewer.camera.computeViewRectangle();
+          if (rect) {
+            that.rectangle_coordinates = rect;
+            // 记下限制高度内的矩形大小，超出后不再放大
+            that.rectSpan = {
+              width: Cesium.Rectangle.computeWidth(rect),
+              height: Cesium.Rectangle.computeHeight(rect)
+            };
+          }
+        } else if (that.rectSpan) {
+          // 超出高度后保持该大小，只跟随当前位置回显
+          const halfW = that.rectSpan.width / 2;
+          const halfH = that.rectSpan.height / 2;
+          let south = carto_p.latitude - halfH;
+          let north = carto_p.latitude + halfH;
+          const latLimit = Cesium.Math.PI_OVER_TWO - Cesium.Math.EPSILON6;
+          if (south < -latLimit) {
+            north -= south + latLimit;
+            south = -latLimit;
+          }
+          if (north > latLimit) {
+            south -= north - latLimit;
+            north = latLimit;
+          }
+          that.rectangle_coordinates = new Cesium.Rectangle(
+            carto_p.longitude - halfW,
+            south,
+            carto_p.longitude + halfW,
+            north
+          );
+        }
         if (that.overMapData.viewer) {
-          const carto_p = Cesium.Cartographic.fromCartesian(position);
           if (!that.overMapData.rectangle) {
             that.overMapData.rectangle = that.overMapData.viewer.entities.add({
               rectangle: {
                 coordinates: new Cesium.CallbackProperty(() => {
                   return that.rectangle_coordinates;
                 }, false),
-                material: that.options.centerRectColor.withAlpha(0.3)
+                material: that.options.centerRectColor.withAlpha(0.5)
               },
-              show: carto_p.height >= 5000000 ? true : false
+              // 黄色边线与二维视窗框描边一致，避免只剩半透明填充看不清
+              // polyline: {
+              //   positions: new Cesium.CallbackProperty(() => {
+              //     const rect = that.rectangle_coordinates;
+              //     if (!rect) return [];
+              //     return [
+              //       Cesium.Cartesian3.fromRadians(rect.west, rect.south),
+              //       Cesium.Cartesian3.fromRadians(rect.west, rect.north),
+              //       Cesium.Cartesian3.fromRadians(rect.east, rect.north),
+              //       Cesium.Cartesian3.fromRadians(rect.east, rect.south),
+              //       Cesium.Cartesian3.fromRadians(rect.west, rect.south)
+              //     ];
+              //   }, false),
+              //   width: 2.5,
+              //   material: new PolylineAntialiasingMaterialProperty({
+              //     color: that.options.centerRectColor
+              //   }),
+              //   clampToGround: true
+              // },
+              show: false
             });
           }
-          if (carto_p.height >= 5000000) {
-            that.overMapData.rectangle.show = false;
-          } else {
-            that.overMapData.rectangle.show = true;
-          }
+          that.overMapData.rectangle.show = !!that.rectangle_coordinates;
           let viewHeight = 0,
             // maxHeight = 3000000;
             maxHeight = 8874143.35297852;
@@ -163,6 +215,62 @@ class OverViewMap {
     }
     that.viewer.scene.postRender.addEventListener(that.listener);
   }
+  /** 点击或拖动时，用落点平移当前视窗矩形，再交给主球定位 */
+  moveOverviewByPosition(windowPosition) {
+    const overview = this.overMapData?.viewer;
+    const rect = this.rectangle_coordinates;
+    if (!overview || !rect || !windowPosition) return;
+    const cartesian = overview.camera.pickEllipsoid(
+      windowPosition,
+      overview.scene.globe.ellipsoid
+    );
+    if (!cartesian) return;
+    const carto = Cesium.Cartographic.fromCartesian(cartesian);
+    const width = Cesium.Rectangle.computeWidth(rect);
+    const height = Cesium.Rectangle.computeHeight(rect);
+    let south = carto.latitude - height / 2;
+    let north = carto.latitude + height / 2;
+    const limit = Cesium.Math.PI_OVER_TWO - Cesium.Math.EPSILON6;
+    if (south < -limit) {
+      north -= south + limit;
+      south = -limit;
+    }
+    if (north > limit) {
+      south -= north - limit;
+      north = limit;
+    }
+    const next = new Cesium.Rectangle(
+      carto.longitude - width / 2,
+      south,
+      carto.longitude + width / 2,
+      north
+    );
+    this.rectangle_coordinates = next;
+    this.viewer.camera.setView({
+      destination: next
+    });
+  }
+
+  /** 鹰眼上按下即定位，拖动过程中持续把新矩形同步到主球 */
+  bindPointer() {
+    if (this.overMapData.handler || !this.overMapData.viewer) return;
+    const handler = new Cesium.ScreenSpaceEventHandler(
+      this.overMapData.viewer.scene.canvas
+    );
+    this.overMapData.handler = handler;
+    handler.setInputAction(event => {
+      this.interacting = true;
+      this.moveOverviewByPosition(event.position);
+    }, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+    handler.setInputAction(event => {
+      if (!this.interacting) return;
+      this.moveOverviewByPosition(event.endPosition);
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+    handler.setInputAction(() => {
+      this.interacting = false;
+    }, Cesium.ScreenSpaceEventType.LEFT_UP);
+  }
+
   setVisible(state) {
     this.show = state;
   }
@@ -177,6 +285,7 @@ class OverViewMap {
     }
     this.options = null;
     this.show = null;
+    this.overMapData.handler?.destroy();
     this.overMapData.viewer.destroy();
     this.viewer.container.removeChild(this.overMapData.dom);
     this.overMapData = null;

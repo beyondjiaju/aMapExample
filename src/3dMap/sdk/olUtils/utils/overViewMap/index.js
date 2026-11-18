@@ -1,4 +1,5 @@
 import * as ol from "@/3dMap/sdk/ol";
+import worldImg from "./images/earth_color_low_4096.jpg";
 
 /** 数值写成像素，none 表示这条边不参与定位 */
 function edgeStyle(value) {
@@ -47,10 +48,11 @@ class OverViewMap {
     this.overMapData = {};
     this.listener = null;
     this.listening = false;
+    this.interacting = false;
     this.addListener();
   }
 
-  /** 创建鹰眼容器和只读小地图，底图与主图同一套高德瓦片 */
+  /** 创建鹰眼容器和只读小地图，底图用与三维相同的世界贴图 */
   ensureOverview() {
     if (this.overMapData.dom) return;
     const target = this.map.getTargetElement();
@@ -65,18 +67,20 @@ class OverViewMap {
     this.overMapData.boxLayer = new ol.VectorLayer({
       source: new ol.VectorSource({ features: [this.overMapData.box] }),
       style: new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#ffff00", width: 2 }),
-        fill: new ol.style.Fill({ color: "rgba(255,255,0,0.3)" })
+        // stroke: new ol.style.Stroke({ color: "#ffff00", width: 2 }),
+        fill: new ol.style.Fill({ color: "rgba(255,255,0,0.5)" })
       })
     });
     const view = this.map.getView();
     this.overMapData.viewer = new ol.Map({
       target: div,
       layers: [
-        new ol.TileLayer({
-          source: new ol.XYZ({
-            url: "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}",
-            projection: "EPSG:3857"
+        // 与三维鹰眼同一张世界贴图，不再拉在线瓦片
+        new ol.ImageLayer({
+          source: new ol.ImageStatic({
+            url: worldImg,
+            projection: "EPSG:4326",
+            imageExtent: [-180, -90, 180, 90]
           })
         }),
         this.overMapData.boxLayer
@@ -89,6 +93,71 @@ class OverViewMap {
       controls: [],
       interactions: []
     });
+    this.bindPointer();
+  }
+
+  /** 点击或拖动时，按落点把当前视窗矩形平移过去，并写回主图 */
+  moveByPointer(event) {
+    const overview = this.overMapData.viewer;
+    const pixel = overview.getEventPixel(event);
+    const coordinate = overview.getCoordinateFromPixel(pixel);
+    if (!coordinate || coordinate.some(value => !Number.isFinite(value))) return;
+    const view = this.map.getView();
+    const size = this.map.getSize();
+    const extent = view.calculateExtent(size);
+    const width = extent[2] - extent[0];
+    const height = extent[3] - extent[1];
+    view.setCenter(coordinate);
+    const next = view.calculateExtent(size);
+    if (!next.every(value => Number.isFinite(value))) {
+      this.overMapData.box.setGeometry(
+        polygonFromExtent([
+          coordinate[0] - width / 2,
+          coordinate[1] - height / 2,
+          coordinate[0] + width / 2,
+          coordinate[1] + height / 2
+        ])
+      );
+      return;
+    }
+    this.overMapData.box.setGeometry(polygonFromExtent(next));
+  }
+
+  /** 鹰眼上按下即定位，拖动过程中持续把新矩形同步到主图 */
+  bindPointer() {
+    const viewport = this.overMapData.viewer.getViewport();
+    this.onPointerDown = event => {
+      if (event.button !== 0) return;
+      this.interacting = true;
+      viewport.setPointerCapture?.(event.pointerId);
+      this.moveByPointer(event);
+    };
+    this.onPointerMove = event => {
+      if (!this.interacting) return;
+      this.moveByPointer(event);
+    };
+    this.onPointerUp = () => {
+      if (!this.interacting) return;
+      this.interacting = false;
+      // 松手后把更新区域放到鹰眼中心，与三维 postRender 回写一致
+      this.syncView();
+    };
+    viewport.addEventListener("pointerdown", this.onPointerDown);
+    window.addEventListener("pointermove", this.onPointerMove);
+    window.addEventListener("pointerup", this.onPointerUp);
+  }
+
+  unbindPointer() {
+    const viewport = this.overMapData?.viewer?.getViewport?.();
+    if (viewport && this.onPointerDown) {
+      viewport.removeEventListener("pointerdown", this.onPointerDown);
+    }
+    if (this.onPointerMove) {
+      window.removeEventListener("pointermove", this.onPointerMove);
+    }
+    if (this.onPointerUp) {
+      window.removeEventListener("pointerup", this.onPointerUp);
+    }
   }
 
   /**
@@ -104,6 +173,7 @@ class OverViewMap {
 
   /** 主图范围变化时刷新鹰眼中心和视窗框 */
   syncView() {
+    if (this.interacting) return;
     if (!this.overMapData?.dom || !this.overMapData.viewer) return;
     this.overMapData.dom.style.display = this.show ? "block" : "none";
     const view = this.map.getView();
@@ -152,6 +222,7 @@ class OverViewMap {
 
   /** 卸掉监听并销毁鹰眼小地图 */
   destroy() {
+    this.unbindPointer();
     this.removeListener();
     this.listener = null;
     if (this.overMapData?.viewer) {

@@ -64,7 +64,6 @@ const { visible, drag, collision, lineColor, lineWidth, applyVisible, applyDrag,
   background: var(--color-bg-panel);
   border: 1px solid var(--color-state-blue);
   border-radius: 4px;
-  font-size: 12px;
   white-space: nowrap;
 }
 </style>

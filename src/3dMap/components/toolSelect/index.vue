@@ -1,9 +1,5 @@
 <template>
   <div class="tool-select" :style="cssText" @click.stop>
-    <i class="decoration left-top" />
-    <i class="decoration right-top" />
-    <i class="decoration left-bottom" />
-    <i class="decoration right-bottom" />
     <slot name="content" />
   </div>
 </template>
@@ -34,54 +30,14 @@ onBeforeMount(() => {
 </script>
 <style lang="scss" scoped>
 .tool-select {
-  background: rgba(0, 0, 0, 0.2) url(./image/bg.png);
-  background-size: 100% 100%;
+  color: var(--color-font);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-4);
+  border-radius: 6px;
+  box-shadow: var(--color-shadow);
+  backdrop-filter: blur(8px);
   padding: 5px 8px;
   position: absolute;
   z-index: 10;
-  .decoration {
-    position: absolute;
-    display: block;
-    width: 12px;
-    height: 12px;
-    background: url(./image/decoration.png);
-    background-size: 100% 100%;
-  }
-  .decoration.left-top {
-    top: -1px;
-    left: -1px;
-  }
-  .decoration.right-top {
-    top: -1px;
-    right: -1px;
-    transform: rotate(90deg);
-  }
-  .decoration.left-bottom {
-    bottom: -1px;
-    left: -1px;
-    transform: rotate(-90deg);
-  }
-  .decoration.right-bottom {
-    bottom: -1px;
-    right: -1px;
-    transform: rotate(180deg);
-  }
-}
-:deep(.select-list) {
-  height: 30px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  margin-bottom: 5px;
-  border-radius: 5px;
-  padding: 0 10px;
-}
-:deep(.select-list.active) {
-  box-shadow: 0 0 15px var(--color-main-1) inset;
-}
-:deep(.select-list.disabled) {
-  cursor: not-allowed;
 }
 </style>

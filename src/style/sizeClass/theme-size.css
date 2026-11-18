@@ -1,0 +1,13 @@
+/* 项目通用尺寸：字号、间距、圆角 */
+html {
+  --size-font: 14px;
+  --size-font-title: 18px;
+  --size-font-subTitle: 16px;
+  --size-mp-1: 5px;
+  --size-mp-2: 10px;
+  --size-mp-3: 15px;
+  --size-mp-4: 20px;
+  --size-radius-1: 2px;
+  --size-radius-2: 4px;
+  --size-radius-3: 6px;
+}

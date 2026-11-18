@@ -18,7 +18,10 @@ class AirspaceGridLevelLines {
   cameraGrid: any;
   checkedLevels: any[];
   mapEmitterOff: any;
-  constructor() {
+  color: string;
+  constructor(option = null) {
+    const newOption = Object.assign({ color: "#ffffff" }, option);
+    this.color = newOption.color;
     this.cameraGrid = {};
     this.checkedLevels = [];
     this.mapEmitterOff = null;
@@ -57,12 +60,14 @@ class AirspaceGridLevelLines {
       if (!cameraGridMode[level]) {
         if (mapMode === "cesium") {
           cameraGridMode[level] = new LevelGridCesium(viewer, {
-            level
+            level,
+            color: this.color
           });
         }
         if (mapMode === "ol") {
           cameraGridMode[level] = new LevelGridOl(olMap, {
-            level
+            level,
+            color: this.color
           });
         }
       }
@@ -71,9 +76,33 @@ class AirspaceGridLevelLines {
     // 记录当前level
     this.checkedLevels = levels;
   }
+  /** 更新二三维已创建网格的颜色，之后新建的层级也使用该颜色 */
+  setColor(color) {
+    if (!color) return;
+    this.color = color;
+    ["cesium", "ol"].forEach(mode => {
+      const grids = this.cameraGrid[mode];
+      if (!grids) return;
+      for (const key in grids) {
+        grids[key].setColor?.(color);
+      }
+    });
+  }
   upDataGridByCheckedLevels() {
     // 根据记录重新加载
     this.loadGridByLevels(this.checkedLevels);
+  }
+  /** 注销二三维已加载的全部网格，并清空已选层级 */
+  clear() {
+    ["cesium", "ol"].forEach(mode => {
+      const grids = this.cameraGrid[mode];
+      if (!grids) return;
+      for (const key in grids) {
+        grids[key].destroy?.();
+      }
+    });
+    this.cameraGrid = {};
+    this.checkedLevels = [];
   }
 }
 /** 保持原调用方式：直接使用这一个网格对象 */

@@ -176,7 +176,6 @@ onBeforeUnmount(() => {
 
 .catalog__brand strong {
   flex: none;
-  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -194,7 +193,6 @@ onBeforeUnmount(() => {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid color-mix(in srgb, var(--color-font) 55%, transparent);
   border-radius: 4px;
-  font-size: 12px;
 }
 
 .theme-switch__menu {
@@ -218,7 +216,6 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 4px 8px;
   border-radius: 3px;
-  font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -257,7 +254,6 @@ onBeforeUnmount(() => {
 .catalog h3 {
   margin: 12px 6px 6px;
   color: var(--color-font-title);
-  font-size: 12px;
   font-weight: 600;
 }
 

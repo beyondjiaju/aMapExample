@@ -4,6 +4,8 @@
 @import "./schemes/cyan.css";
 @import "./schemes/white.css";
 @import "./schemes/black.css";
+@import "./sizeClass/theme-size.css";
+@import "./sizeClass/theme-class.css";
 
 * {
   box-sizing: border-box;
@@ -20,6 +22,7 @@ body,
   color: var(--color-font);
   background: var(--color-bg);
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: var(--size-font);
 }
 
 button,

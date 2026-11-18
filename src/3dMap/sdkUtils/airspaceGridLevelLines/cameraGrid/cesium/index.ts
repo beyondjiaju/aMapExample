@@ -39,21 +39,39 @@ class LevelGridCesium {
   gridLines: any;
   gridLabels: any;
   showPolygon: any;
+  color: any;
+  destroyed: boolean;
   constructor(viewer, option = null) {
     const newOption = Object.assign(
       {
-        level: null
+        level: null,
+        color: "#ffffff"
       },
       option
     );
     this.viewer = viewer;
     this.level = newOption.level;
+    this.color = newOption.color;
     this.gridCodeVisible = true;
     this.showPolygon = null;
+    this.destroyed = false;
     this.gridLines = new Cesium.PolylineCollection();
     this.viewer.scene.primitives.add(this.gridLines);
     this.gridLabels = new Cesium.LabelCollection();
     this.viewer.scene.primitives.add(this.gridLabels);
+  }
+  /** 更新已绘制网格线和标注颜色，后续新建也沿用该颜色 */
+  setColor(color) {
+    if (!color) return;
+    this.color = color;
+    const cesiumColor = Cesium.Color.fromCssColorString(color);
+    for (let i = 0; i < this.gridLabels.length; i++) {
+      this.gridLabels.get(i).fillColor = cesiumColor;
+    }
+    for (let i = 0; i < this.gridLines.length; i++) {
+      const line = this.gridLines.get(i);
+      if (line.material?.uniforms) line.material.uniforms.color = cesiumColor;
+    }
   }
   /**设置层级
    * @param { Number } level
@@ -144,6 +162,33 @@ class LevelGridCesium {
     this.gridLines.removeAll();
     this.gridLabels.removeAll();
   }
+  /** 注销当前层级：先停监听并隐藏，等本帧渲染结束后再从场景移除 */
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    const viewer = this.viewer;
+    if (this.listener && viewer && !viewer.isDestroyed?.()) {
+      viewer.camera.changed.removeEventListener(this.listener);
+    }
+    this.listener = undefined;
+    const lines = this.gridLines;
+    const labels = this.gridLabels;
+    const polygon = this.showPolygon;
+    this.gridLines = undefined;
+    this.gridLabels = undefined;
+    this.showPolygon = undefined;
+    // 先隐藏，避免下一帧还去更新即将销毁的集合
+    if (lines) lines.show = false;
+    if (labels) labels.show = false;
+    if (!viewer || viewer.isDestroyed?.()) return;
+    // 同步 remove 会在渲染循环仍引用顶点缓冲时销毁 WebGL 资源，地图直接报错并停止绘制
+    setTimeout(() => {
+      if (viewer.isDestroyed?.()) return;
+      if (lines && !lines.isDestroyed?.()) viewer.scene.primitives.remove(lines);
+      if (labels && !labels.isDestroyed?.()) viewer.scene.primitives.remove(labels);
+      if (polygon) viewer.entities.remove(polygon);
+    }, 0);
+  }
   /**2d模式下获取相机边界 */
   getCoordinates2D() {
     const that = this;
@@ -190,11 +235,18 @@ class LevelGridCesium {
     const that = this;
     const camera = that.viewer.camera;
     const scene = that.viewer.scene;
+    const canvas = that.viewer.canvas;
+    const empty = { minLon: null, minLat: null, maxLon: null, maxLat: null };
+    // 画布宽高为 0 时四个角都拾取失败，Cesium 会退回整球范围
+    if (!canvas?.clientWidth || !canvas?.clientHeight) return empty;
     const rectangle = camera.computeViewRectangle(scene.globe.ellipsoid);
+    if (!rectangle) return empty;
     const minLon = Cesium.Math.toDegrees(rectangle.west);
     const maxLon = Cesium.Math.toDegrees(rectangle.east);
     const minLat = Cesium.Math.toDegrees(rectangle.south);
     const maxLat = Cesium.Math.toDegrees(rectangle.north);
+    // 整球范围不是当前视野，拿去铺网格会把三维打崩
+    if (maxLon - minLon >= 300 || maxLat - minLat >= 150) return empty;
     return {
       minLon,
       minLat,
@@ -422,7 +474,7 @@ class LevelGridCesium {
       position: Cesium.Cartesian3.fromDegrees(position[0], position[1], 0),
       text: text,
       font: "bold 20px sans-serif",
-      fillColor: Cesium.Color.fromCssColorString("white"),
+      fillColor: Cesium.Color.fromCssColorString(this.color),
       outlineColor: Cesium.Color.fromCssColorString("black"),
       outlineWidth: 3,
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -447,7 +499,7 @@ class LevelGridCesium {
         fabric: {
           type: "Color",
           uniforms: {
-            color: Cesium.Color.fromCssColorString("white")
+            color: Cesium.Color.fromCssColorString(this.color)
           }
         }
       })
