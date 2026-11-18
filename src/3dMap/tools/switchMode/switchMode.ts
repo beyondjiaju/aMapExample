@@ -16,6 +16,7 @@ export function switchMapMode() {
   if (store.mapModeIs2D) {
     const olView = olMap.getView();
     const extent = olView.calculateExtent(olMap.getSize());
+    const rotation = olView.getRotation();
     store.mapModeIs2D = false;
     viewer.camera.setView({
       destination: Cesium.Rectangle.fromDegrees(
@@ -25,18 +26,22 @@ export function switchMapMode() {
         extent[3]
       ),
       orientation: {
+        heading: -rotation,
         pitch: Cesium.Math.toRadians(-90),
         roll: 0
       }
     });
   } else {
-    const position = viewer.camera.positionCartographic;
+    const position = viewer?.camera?.positionCartographic;
     const lon = Cesium.Math.toDegrees(position.longitude);
     const lat = Cesium.Math.toDegrees(position.latitude);
     const height = position.height;
+    const heading = viewer.camera.heading;
     store.mapModeIs2D = true;
+    const zoomLevel = heightToZoom(height);
     olMap.getView().setCenter([lon, lat]);
-    olMap.getView().setZoom(heightToZoom(height));
+    olMap.getView().setRotation(-heading);
+    olMap.getView().setZoom(zoomLevel);
   }
   // 容器从隐藏变为显示后补一次尺寸，避免画布停在 0
   nextTick(() => resizeMaps());

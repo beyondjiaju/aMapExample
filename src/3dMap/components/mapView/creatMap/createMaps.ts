@@ -5,6 +5,8 @@ import { createViewer, AMapImageryProvider } from "@/3dMap/sdk/cesiumUtils";
 import { setOlMap, setViewer, viewer, olMap, config } from "@/3dMap/global";
 import { heightToZoom } from "@/3dMap/sdk/olUtils";
 import { defaults as defaultInteractions } from "ol/interaction";
+import { defaults as defaultControls } from "ol/control";
+import { applyDragRotate } from "./dragRotate";
 
 /** 示例页读取的运行时地图，创建完成后置 ready */
 export const mapRuntime = reactive({
@@ -58,6 +60,8 @@ export async function mountCesium() {
   mapRuntime.viewer = result;
   addCesiumBase(result);
   flyCesiumHome(result);
+  // 与二维使用同一旋转按键，默认滚轮按下
+  applyDragRotate();
   return result;
 }
 
@@ -77,16 +81,28 @@ export function mountOl() {
     view: new ol.View({
       center: [home.lon, home.lat],
       zoom: heightToZoom(home.height),
-      projection: ol.WGS84
+      projection: ol.WGS84,
+      // 二维开启旋转，初始角与配置朝向一致
+      enableRotation: true,
+      rotation: home.heading
+    }),
+    // 不使用 OpenLayers 自带复位按钮，指北针沿用现有组件
+    controls: defaultControls({
+      rotate: false
     }),
     interactions: defaultInteractions({
-      doubleClickZoom: false
+      doubleClickZoom: false,
+      // 旋转改由 dragRotate 按统一按键处理，不再使用 Alt+Shift
+      altShiftDragRotate: false,
+      pinchRotate: true
     })
   });
   map.addControl(new ol.ScaleLine({ units: "metric" }));
   map.addControl(new ol.MousePosition());
   setOlMap(map);
   mapRuntime.olMap = map;
+  // 与三维使用同一旋转按键，默认滚轮按下
+  applyDragRotate();
   return map;
 }
 

@@ -88,5 +88,7 @@ export {
   PolygonOutlineGeometry,
   EllipseOutlineGeometry,
   EntityCluster,
-  DataSourceCollection
+  DataSourceCollection,
+  CameraEventType,
+  KeyboardEventModifier
 } from "cesium";
