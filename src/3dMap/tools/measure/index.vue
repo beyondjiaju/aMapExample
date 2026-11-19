@@ -3,12 +3,12 @@
     <template v-for="list in measureData" :key="list.type">
       <el-tooltip effect="light" :content="list.label" placement="top">
         <li @click="measureChange(list.type)">
-          <img v-show="measureType != list.type" :src="list.image" alt />
-          <img
-            v-show="measureType == list.type"
-            class="active"
-            :src="list.imageActive"
-            alt
+          <!-- 默认系统文字色，选中时用主题色高亮 -->
+          <component
+            :is="list.icon"
+            :color="measureType == list.type ? 'var(--color-main)' : 'var(--color-font)'"
+            :width="20"
+            :height="20"
           />
         </li>
       </el-tooltip>
@@ -16,42 +16,33 @@
   </ul>
 </template>
 <script setup lang="ts">
-import { ref, onUnmounted } from "vue";
+import { ref, onUnmounted, type Component } from "vue";
 import { Measure } from "@/3dMap/sdkUtils/measure";
-// img
-import pointImg from "./image/point.png";
-import pointActiveImg from "./image/point-active.png";
-import lineImg from "./image/line.png";
-import lineActiveImg from "./image/line-active.png";
-import polygonImg from "./image/polygon.png";
-import polygonActiveImg from "./image/polygon-active.png";
-import clearImg from "./image/clear.png";
-import clearActiveImg from "./image/clear-active.png";
+import PointIcon from "./imageSvg/point.vue";
+import LineIcon from "./imageSvg/line.vue";
+import AreaIcon from "./imageSvg/area.vue";
+import ClearIcon from "./imageSvg/clear.vue";
 const measureType = ref("");
-const measureData = ref([
+const measureData = ref<{ label: string; type: string; icon: Component }[]>([
   {
     label: "位置测量",
     type: "coordinate",
-    image: pointImg,
-    imageActive: pointActiveImg
+    icon: PointIcon
   },
   {
     label: "折线测量",
     type: "distance",
-    image: lineImg,
-    imageActive: lineActiveImg
+    icon: LineIcon
   },
   {
     label: "面积测量",
     type: "area",
-    image: polygonImg,
-    imageActive: polygonActiveImg
+    icon: AreaIcon
   },
   {
     label: "清除",
     type: "clear",
-    image: clearImg,
-    imageActive: clearActiveImg
+    icon: ClearIcon
   }
 ]);
 const measure = new Measure({
@@ -89,16 +80,11 @@ onUnmounted(() => {
       border-color: var(--color-main);
       background: var(--color-bg-3);
     }
-    img {
-      width: 15px;
-      height: 15px;
+    svg {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      max-width: 15px;
-      max-height: 15px;
-      object-fit: contain;
     }
   }
   li:last-child {

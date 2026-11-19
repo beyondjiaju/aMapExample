@@ -108,7 +108,7 @@ class RectanglePick {
     let newCoordinates = coordinates;
     if (fillterType == "polyline") {
       const lineString = turf.lineString(coordinates);
-      const buffered = turf.buffer(lineString, 0.2 * 0.001, { units: "miles" });
+      const buffered = turf.buffer(lineString, 0.2 * 0.001, { units: "kilometers" });
       newCoordinates = buffered.geometry.coordinates[0];
     }
     that.pickedResult = [];

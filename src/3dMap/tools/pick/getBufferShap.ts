@@ -8,7 +8,7 @@ export default (shap, buffer) => {
   if (shap.type == "polyline") {
     const lineString = turf.lineString(shap.coordinates);
     const buffered = turf.buffer(lineString, buffer * 0.001, {
-      units: "miles"
+      units: "kilometers"
     });
     ret.coordinates = buffered.geometry.coordinates[0];
   }

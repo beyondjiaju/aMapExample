@@ -126,7 +126,7 @@ class PolylineVolumeFromPolygon {
                 ),
                 turf.point(nextLineLeft.geometry.coordinates[0]),
                 {
-                  units: "miles",
+                  units: "kilometers",
                   steps: 360
                 }
               );
@@ -153,7 +153,7 @@ class PolylineVolumeFromPolygon {
                 ),
                 turf.point(nextLineRight.geometry.coordinates[0]),
                 {
-                  units: "miles",
+                  units: "kilometers",
                   steps: 360
                 }
               );

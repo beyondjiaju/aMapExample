@@ -1,6 +1,5 @@
 /** sdkUtils 下的对象统一从这里导出 */
 export * from "./airspaceGridHeatMap";
-export * from "./animationPath";
 export * from "./airspaceGridLevelLines";
 export * from "./drawCustom";
 export * from "./heatMap2D";

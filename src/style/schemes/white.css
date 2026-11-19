@@ -1,8 +1,8 @@
 /* 白色系。浅底用深色字 */
 [data-theme="white"] {
   /* 主色 */
-  --color-main: #ffffff;
-  --color-main-1: #cccccc;
+  --color-main: #146ced;
+  --color-main-1: #589cff;
   /* 背景 */
   --color-bg: rgba(255, 255, 255, 1);
   --color-bg-panel: rgba(255, 255, 255, 0.92);

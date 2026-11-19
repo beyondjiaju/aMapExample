@@ -1,8 +1,8 @@
 /* 黑色系 */
 [data-theme="black"] {
   /* 主色 */
-  --color-main: #202020;
-  --color-main-1: #3c3c3c;
+  --color-main: #146ced;
+  --color-main-1: #589cff;
   /* 背景 */
   --color-bg: #111111;
   --color-bg-panel: rgba(17, 17, 17, 0.8);

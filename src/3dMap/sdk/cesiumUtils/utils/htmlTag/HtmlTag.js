@@ -131,7 +131,7 @@ class HtmlTag {
       if (that.dragPosition) {
         if (!that.position.equals(that.historyPosition)) {
           const turfOptions = {
-            units: "miles"
+            units: "kilometers"
           };
           // 计算角度与距离
           const pHis = Cesium.Cartographic.fromCartesian(that.historyPosition),
@@ -421,7 +421,7 @@ class HtmlTag {
                   line,
                   point,
                   {
-                    units: "miles",
+                    units: "kilometers",
                     steps: 360
                   }
                 );

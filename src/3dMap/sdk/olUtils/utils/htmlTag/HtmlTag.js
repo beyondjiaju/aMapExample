@@ -137,7 +137,7 @@ class HtmlTag {
           JSON.stringify(that.position) === JSON.stringify(that.historyPosition)
         ) {
           const turfOptions = {
-            units: "miles"
+            units: "kilometers"
           };
           // 计算角度与距离
           const pointHis = turf.point(that.historyPosition),
@@ -371,7 +371,7 @@ class HtmlTag {
                 ]),
                 point = turf.point(that.position);
               const nearestPointOnLine = turf.nearestPointOnLine(line, point, {
-                units: "miles",
+                units: "kilometers",
                 steps: 360
               });
               // 存储最短距离点cartesian3格式坐标

@@ -55,7 +55,7 @@ class HollowCylinder {
     const center = options.center,
       point = turf.point([center[0], center[1]]),
       turfOptions = {
-        units: "miles",
+        units: "kilometers",
         steps: 360
       };
     let innerPositions_degrees,
