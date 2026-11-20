@@ -25,12 +25,14 @@ class DrawHandler {
       outlineWidth: 2,
       moveEvent: true, // 移动事件
       moveCoordinate: true, // 移动实时坐标，moveEvent为true生效
+      moveCoordinateFormat: "lonlat", // 鼠标位置坐标格式，lonlat 经纬度，dms 度分秒
       endType: "contextmenu"
     };
     // 合并参数
-    const newOption = Object.assign(defaultOption, option);
+    const newOption = Object.assign({}, defaultOption, option);
     const { moveCoordinate, ...other } = newOption;
     this.moveCoordinate = moveCoordinate;
+    this.moveCoordinateFormat = newOption.moveCoordinateFormat;
     this.moveLabel = null;
     this.tipFeature = null;
     this.olMap = olMap;
@@ -66,7 +68,7 @@ class DrawHandler {
    * @param {String} options.style default: fill
    * @param {Object} options.color Color
    * @param {Object} options.outlineColor Color
-   * @param {Number} options.outlineWidth default: 2 style:outline模式下生效
+   * @param {Number} options.outlineWidth default: 2 线宽
    */
   start(type, options) {
     if (type == "point") {
@@ -128,24 +130,54 @@ class DrawHandler {
         width: that.newOptions.outlineWidth
       })
     };
+    // 线统一使用边线颜色、透明度与宽度
+    const lineStroke = () =>
+      new ol.style.Stroke({
+        color: outlineColor,
+        width: that.newOptions.outlineWidth || 2
+      });
     const polyline = {
-      stroke: new ol.style.Stroke({
-        color: outlineColor,
-        width: that.newOptions.width || 2
-      })
+      stroke: lineStroke()
     };
-    const polygon = {
-      fill: new ol.style.Fill({ color }),
-      stroke: new ol.style.Stroke({
-        color: outlineColor,
-        width: that.newOptions.width || 2
-      })
-    };
+    // 边线样式只描边，不创建填充
+    const isOutline = that.newOptions.style == "outline";
+    const polygon = isOutline
+      ? {
+          stroke: lineStroke()
+        }
+      : {
+          fill: new ol.style.Fill({ color }),
+          stroke: lineStroke()
+        };
     return {
       point,
       label,
       polyline,
       polygon
+    };
+  }
+  /** 按当前格式生成鼠标位置文字，lonlat 为经纬度，dms 为度分秒 */
+  getMoveCoordinateText(lon, lat) {
+    if (this.moveCoordinateFormat === "dms") {
+      const degrees_new = coordinateConversionTool.degreesToDegrees60(
+        lon,
+        lat,
+        true
+      );
+      // 转换失败时继续走经纬度，避免鼠标移动过程被打断
+      if (degrees_new) {
+        return `${degrees_new.showLatString}\n${degrees_new.showLongString}\n`;
+      }
+    }
+    const lonText = Number(lon).toFixed(5);
+    const latText = Number(lat).toFixed(5);
+    return `X: ${lonText}\nY: ${latText}`;
+  }
+  /** 与三维一致，把样式和边线宽度记到结果上，编辑时按 outline 描边 */
+  getShapeStyle() {
+    return {
+      style: this.newOptions.style,
+      outlineWidth: this.newOptions.outlineWidth
     };
   }
   /**初始化绘制
@@ -154,8 +186,16 @@ class DrawHandler {
    */
   initDraw(options) {
     const that = this;
+    const next = options || {};
+    // 鼠标坐标开关和格式挂在实例上，绘制过程中直接读取
+    if (typeof next.moveCoordinate === "boolean") {
+      that.moveCoordinate = next.moveCoordinate;
+    }
+    if (next.moveCoordinateFormat) {
+      that.moveCoordinateFormat = next.moveCoordinateFormat;
+    }
     // 合并绘制参数
-    that.newOptions = Object.assign(that.options, options);
+    that.newOptions = Object.assign(that.options, next);
     // 停止上一次绘制并清空过程图形
     that.stop();
     // 设置鼠标样式为crosshair
@@ -388,7 +428,8 @@ class DrawHandler {
         // 存储
         drawFeature.set("properties", {
           type: "polyline",
-          coordinates: positions
+          coordinates: positions,
+          ...that.getShapeStyle()
         });
         // 添加并触发绘制结束监听
         that.addAndRaiseFinished(drawFeature);
@@ -514,7 +555,8 @@ class DrawHandler {
           // 存储
           drawFeature.set("properties", {
             type: "polygon",
-            coordinates: positions
+            coordinates: positions,
+            ...that.getShapeStyle()
           });
           // 添加并触发绘制结束监听
           that.addAndRaiseFinished(drawFeature);
@@ -569,7 +611,8 @@ class DrawHandler {
       drawFeature.set("properties", {
         type: "rectangle",
         coordinates,
-        points: positions
+        points: positions,
+        ...that.getShapeStyle()
       });
       // 添加并触发绘制结束监听
       that.addAndRaiseFinished(drawFeature);
@@ -684,7 +727,8 @@ class DrawHandler {
         coordinates,
         center: positions.start,
         points: positions,
-        radius
+        radius,
+        ...that.getShapeStyle()
       });
       // 添加并触发绘制结束监听
       that.addAndRaiseFinished(drawFeature);
@@ -828,7 +872,8 @@ class DrawHandler {
         points: positions,
         startAngle,
         endAngle,
-        radius
+        radius,
+        ...that.getShapeStyle()
       });
       // 添加并触发绘制结束监听
       that.addAndRaiseFinished(drawFeature);
@@ -978,7 +1023,8 @@ class DrawHandler {
         type: "rectangleCircle",
         coordinates,
         points: positions,
-        radius
+        radius,
+        ...that.getShapeStyle()
       });
       // 添加并触发绘制结束监听
       that.addAndRaiseFinished(drawFeature);
@@ -1135,12 +1181,7 @@ class DrawHandler {
   /**绘制过程中添加位置 */
   addMoveLabel(coordinate) {
     if (!coordinate || !this.moveCoordinate) return;
-    const degrees_new = coordinateConversionTool.degreesToDegrees60(
-      coordinate[0],
-      coordinate[1],
-      true
-    );
-    const text = `${degrees_new.longString}\n${degrees_new.latString}\n`;
+    const text = this.getMoveCoordinateText(coordinate[0], coordinate[1]);
     if (!this.moveLabel) {
       const label = Object.assign(this.getLabelOption(), {
         text,

@@ -11,10 +11,11 @@ class DrawHandlerEdit {
   constructor(olMap, operateOption) {
     this.operateOption = Object.assign(
       {
-        color: "#DEDEDE",
+        color: "#ffff00",
         alpha: 0.6,
-        outlineColor: "",
+        outlineColor: "#ffff00",
         outlineAlpha: 1,
+        outlineWidth: 4,
         entireMove: true
       },
       operateOption
@@ -48,12 +49,15 @@ class DrawHandlerEdit {
     this.events = {};
     this.option = null;
     this.feature = null;
+    this.setFeatureOptions();
+  }
+  /** 按当前 operateOption 生成编辑图形样式 */
+  setFeatureOptions() {
     const color = this.operateOption.color;
     const colorWithAlpha = getColorAlpha(
       this.operateOption.color,
       this.operateOption.alpha
     );
-    const outlineColor = this.operateOption.outlineColor;
     const outlineColorWithAlpha = getColorAlpha(
       this.operateOption.outlineColor,
       this.operateOption.outlineAlpha
@@ -71,13 +75,36 @@ class DrawHandlerEdit {
         scale: 1
       },
       polyline: {
-        stroke: new ol.style.Stroke({ color: outlineColor, width: 6 })
+        stroke: new ol.style.Stroke({ color: outlineColorWithAlpha, width: 2 })
       },
       polygon: {
         fill: new ol.style.Fill({ color: colorWithAlpha }),
         stroke: new ol.style.Stroke({ color: outlineColorWithAlpha, width: 2 })
       }
     };
+  }
+  /** 更新编辑样式。正在编辑时重绘当前图形 */
+  upDataOptions(options = {}) {
+    this.operateOption = Object.assign({}, this.operateOption, options);
+    if (!this.operateOption.outlineColor) {
+      this.operateOption.outlineColor = this.operateOption.color;
+    }
+    this.setFeatureOptions();
+    if (!this.option) return;
+    if (options.style != null) this.option.style = options.style;
+    if (options.outlineWidth != null) {
+      this.option.outlineWidth = options.outlineWidth;
+    } else if (options.width != null) {
+      this.option.outlineWidth = options.width;
+    }
+    // 图形还在地图上时才重绘，避免编辑已结束后把图形加回来
+    if (!this.feature || !this.geometry.getSource().hasFeature(this.feature)) {
+      return;
+    }
+    this.geometry.getSource().removeFeature(this.feature);
+    this.feature = null;
+    this.addGeometry();
+    this.refreshEditView();
   }
   /**设置监听 */
   setMapEvents() {
@@ -665,9 +692,20 @@ class DrawHandlerEdit {
       this.points.getSource().addFeature(currentPoint);
     }
   }
+  /** 线统一使用边线颜色、透明度与宽度 */
+  getOutlineLineStyle() {
+    return {
+      color: getColorAlpha(
+        this.operateOption.outlineColor,
+        this.operateOption.outlineAlpha == null ? 1 : this.operateOption.outlineAlpha
+      ),
+      width: Cesium.defaultValue(this.option && this.option.outlineWidth, 2)
+    };
+  }
   /**添加线 */
   addLines() {
     const properties = this.getEditProperties();
+    const outlineLine = this.getOutlineLineStyle();
     const coordinates = Cesium.clone(this.option.coordinates, true);
     if (this.option.type == "polygon") {
       // 坐标
@@ -679,7 +717,14 @@ class DrawHandlerEdit {
           geometry: new ol.geom.LineString([c, coordinates[index + 1]]),
           properties
         });
-        polyline.setStyle(new ol.style.Style(this.feature_options.polyline));
+        polyline.setStyle(
+          new ol.style.Style({
+            stroke: new ol.style.Stroke({
+              color: outlineLine.color,
+              width: outlineLine.width
+            })
+          })
+        );
         polyline.setId(`line_${index}`);
         polyline.set("index", index);
         this.lines.getSource().addFeature(polyline);
@@ -694,10 +739,13 @@ class DrawHandlerEdit {
         geometry: new ol.geom.LineString(this.option.coordinates),
         properties
       });
-      const outlineColor = this.operateOption.outlineColor;
+      const outlineLine = this.getOutlineLineStyle();
       this.feature.setStyle(
         new ol.style.Style({
-          stroke: new ol.style.Stroke({ color: outlineColor, width: 2 })
+          stroke: new ol.style.Stroke({
+            color: outlineLine.color,
+            width: outlineLine.width
+          })
         })
       );
       this.geometry.getSource().addFeature(this.feature);
@@ -707,7 +755,21 @@ class DrawHandlerEdit {
         this.option.type
       ) >= 0
     ) {
-      const polygon = Object.assign({}, this.feature_options.polygon);
+      // 边线样式只描边；填充样式的边同样使用边线颜色与宽度
+      const isOutline = this.option.style == "outline";
+      const outlineLine = this.getOutlineLineStyle();
+      const lineStroke = new ol.style.Stroke({
+        color: outlineLine.color,
+        width: outlineLine.width
+      });
+      const polygon = isOutline
+        ? {
+            stroke: lineStroke
+          }
+        : {
+            fill: this.feature_options.polygon.fill,
+            stroke: lineStroke
+          };
       let coordinates = [];
       if (this.option.type == "circle") {
         // 获取扇形边界坐标

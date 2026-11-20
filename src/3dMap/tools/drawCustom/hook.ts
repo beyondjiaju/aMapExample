@@ -92,21 +92,28 @@ export default (emits, props) => {
       emits("confirm", properties);
     }, 300);
   };
+  // 绘制样式。外部初始化参数覆盖默认值，start 时整份传给绘制工具
+  let drawOptions = {
+    endType: "contextmenu",
+    moveEvent: true,
+    ...(props.options || {})
+  };
   /** 通用绘制对象在初始化时创建，并自行监听二三维切换 */
   drawCustom = new DrawCustom({
-    onDrawFinished: drawFinishEndEvent
+    onDrawFinished: drawFinishEndEvent,
+    handlerOptions: drawOptions
   });
   /**开启绘制
    * @param {String} draw_type
    * @param {Object} draw_options
    */
-  const start = (
-    type = null,
-    options = {
-      endType: "contextmenu",
-      moveEvent: true
+  const start = (type = null, options?) => {
+    // 组件已加载时，用当前样式绘制；传入的参数覆盖已保存样式
+    if (options) {
+      drawOptions = { ...drawOptions, ...options };
     }
-  ) => {
+    const nextOptions = { ...drawOptions };
+    drawCustom.upDataOptions(nextOptions);
     drawCustom.clear();
     if (type == "clear") {
       activeDrawType.value = "";
@@ -118,7 +125,7 @@ export default (emits, props) => {
       return;
     }
     activeDrawType.value = type ? type : drawData.value[0].type;
-    drawCustom.setDrawType(activeDrawType.value, options);
+    drawCustom.setDrawType(activeDrawType.value, nextOptions);
     if (type == "input") {
       // 停止
       drawCustom.stop();
@@ -133,7 +140,16 @@ export default (emits, props) => {
       return;
     }
     // 绘制
-    drawCustom.start(activeDrawType.value, options);
+    drawCustom.start(activeDrawType.value, nextOptions);
+  };
+  /** 更新绘制样式。已选中工具时先停再开，让新样式作用到后续绘制 */
+  const upDataOptions = options => {
+    drawOptions = { ...drawOptions, ...(options || {}) };
+    drawCustom.upDataOptions(drawOptions);
+    const type = activeDrawType.value;
+    if (!type) return;
+    stop();
+    start(type);
   };
   /**停止绘制 */
   const stop = () => {
@@ -197,6 +213,7 @@ export default (emits, props) => {
     newDrawHandlerByModeDestroy,
     start,
     stop,
+    upDataOptions,
     cancel,
     cancelEdit,
     confirmEdit,

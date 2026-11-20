@@ -27,8 +27,6 @@ class MeasureHandler {
     this.ellipsoid = this.scene.globe.ellipsoid;
     this.canvas = this.scene.canvas;
     this.handler = new Cesium.ScreenSpaceEventHandler(this.canvas);
-    // htmlTag
-    this.htmlTagCollection = new HtmlTagCollection(viewer);
     // 添加过程中
     this.dataSource_measure = new Cesium.CustomDataSource(
       "drawDataSource_measure"
@@ -41,24 +39,33 @@ class MeasureHandler {
       color: "#ffff00",
       alpha: 0.5,
       endType: "contextmenu",
-      moveEvent: true // 移动事件
+      moveEvent: true, // 移动事件
+      coordinateFormat: "lonlat" // 坐标展示格式，默认经纬度
     };
     const newOptions = Object.assign(defaultOptions, options);
     this.endType = getEndType(newOptions.endType);
     this.moveEvent = newOptions.moveEvent;
-    const color = newOptions.color;
-    const alpha = newOptions.alpha;
+    // 坐标格式可在对象上直接修改，后续测量按当前值生成文本
+    this.coordinateFormat = newOptions.coordinateFormat;
+    this.setColor(newOptions.color, newOptions.alpha);
+  }
+  /**更新绘制颜色。每次新建样式对象，已绘制的测量仍持有旧颜色 */
+  setColor(color, alpha) {
+    this.color = color ?? this.color ?? "#ffff00";
+    this.alpha = alpha ?? this.alpha ?? 0.5;
+    const solid = Cesium.Color.fromCssColorString(this.color);
     this.entity_options = {
       point: {
         pixelSize: 6,
-        color: Cesium.Color.fromCssColorString(color).withAlpha(alpha),
+        color: solid.withAlpha(this.alpha),
         outlineWidth: 2,
-        outlineColor: Cesium.Color.fromCssColorString(color)
+        outlineColor: Cesium.Color.fromCssColorString(this.color)
       },
       label: {
+        font: "bold 20px sans-serif",
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-        fillColor: Cesium.Color.fromCssColorString(color),
+        horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+        fillColor: Cesium.Color.fromCssColorString(this.color),
         pixelOffset: new Cesium.Cartesian2(0, -10),
         scaleByDistance: new Cesium.NearFarScalar(0, 1, 9999999, 0),
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -66,15 +73,23 @@ class MeasureHandler {
       },
       polyline: {
         material: new PolylineAntialiasingMaterialProperty({
-          color: Cesium.Color.fromCssColorString(color)
+          color: Cesium.Color.fromCssColorString(this.color)
         }),
         width: 4,
         zIndex: 99999999
       },
       polygon: {
-        material: Cesium.Color.fromCssColorString(color).withAlpha(alpha)
+        material: Cesium.Color.fromCssColorString(this.color).withAlpha(this.alpha)
       }
     };
+  }
+  /**复制当前点样式，只给新测量使用 */
+  copyPointOption() {
+    return Object.assign({}, this.entity_options.point);
+  }
+  /**复制当前文字样式，只给新测量使用 */
+  copyLabelOption() {
+    return Object.assign({}, this.entity_options.label);
   }
   /**开启绘制
    * @param {String} type
@@ -96,8 +111,6 @@ class MeasureHandler {
     that.stop();
     // 设置样式为crosshair
     that.viewer.scene.canvas.style.cursor = "crosshair";
-    const point = Object.assign({}, this.entity_options.point);
-    // let label = Object.assign({}, this.entity_options.label);
     that.handler.setInputAction(m => {
       const cartesian = that.viewer.camera.pickEllipsoid(m.position),
         cartographic = Cesium.Cartographic.fromCartesian(cartesian),
@@ -108,32 +121,27 @@ class MeasureHandler {
           height.substr(height.indexOf(".") + 1).length > 5
             ? cartographic.height.toFixed(5) + "m"
             : cartographic.height + "m";
-      const degrees_new = coordinateConversionTool.degreesToDegrees60(
-        lon,
-        lat,
-        true
-      );
-      this.htmlTagCollection.add(
-        new HtmlTag(that.viewer, {
-          position: cartesian,
-          html: `<div style="color: yellow;text-shadow: 0 0 5px #000;font-size: 16px;line-height: 18px;">
-          <p>${degrees_new.showLatString}</p>
-          <p>${degrees_new.showLongString}</p>
-        <div/>`,
-          show: true,
-          noEvent: true,
-          isDrag: false,
-          alignmentMode: 7,
-          translate: [0, -8]
-        })
-      );
-      // let text = `X: ${lon}\nY: ${lat}\nZ: ${h}`;
-      // const text = `${degrees_new.showLatString}\n${degrees_new.showLongString}\n`;
-      // label.text = text;
+      // 按当前坐标格式生成标注，lonlat 为经纬度，dms 为度分秒
+      let text = `X: ${lon}\nY: ${lat}\nZ: ${h}`;
+      if (this.coordinateFormat === "dms") {
+        const degrees_new = coordinateConversionTool.degreesToDegrees60(
+          lon,
+          lat,
+          true
+        );
+        // Cesium.Label 会过滤 U+202A–U+206F，分秒符号 ′ ″ 在其中会被去掉，只剩 °；换成可显示的 ʹ ʺ
+        text = `${degrees_new.showLatString}\n${degrees_new.showLongString}\n`
+          .replace(/\u2032/g, "\u02B9")
+          .replace(/\u2033/g, "\u02BA");
+      }
+      // 每次点击按当前颜色新建样式，不改已有测量
+      const point = this.copyPointOption();
+      const label = this.copyLabelOption();
+      label.text = text;
       this.dataSource.entities.add({
         position: cartesian,
-        point
-        // label
+        point,
+        label
       });
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
   }
@@ -209,10 +217,10 @@ class MeasureHandler {
         ? isMove == false
         : cartesian.equals(positions[positions.length - 1]);
       if (!cartesian || noCanAddPoint) return;
-      // 点
+      // 新点使用当前颜色，已有点保持原色
       that.dataSource_measure.entities.add({
         position: cartesian,
-        point
+        point: that.copyPointOption()
       });
       // 坐标处理
       positions.push(cartesian);
@@ -232,7 +240,8 @@ class MeasureHandler {
         distanceAdd -= hisDistance;
         hisDistance = null;
       }
-      // label
+      // 新标注使用当前颜色，已有标注保持原色
+      label.fillColor = Cesium.Color.fromCssColorString(that.color);
       label.text = new Cesium.CallbackProperty(() => {
         return `${(distance * 0.001).toFixed(2)}km`;
       }, false);
@@ -248,7 +257,10 @@ class MeasureHandler {
       });
       // 线
       if (!measureEntity) {
-        addLabel.fillColor = Cesium.Color.fromCssColorString("#ffa500");
+        // 线在首次创建时取当前颜色，之后不再改这条线
+        polyline = Object.assign({}, that.entity_options.polyline);
+        addLabel = that.copyLabelOption();
+        addLabel.fillColor = Cesium.Color.fromCssColorString(that.color);
         addLabel.show = false;
         addLabel.text = new Cesium.CallbackProperty(() => {
           return `${(distanceAdd * 0.001).toFixed(2)}km`;
@@ -306,7 +318,7 @@ class MeasureHandler {
       positions.forEach(p => {
         that.dataSource.entities.add({
           position: p,
-          point
+          point: that.copyPointOption()
         });
       });
       allLabelData.forEach(val => {
@@ -317,7 +329,7 @@ class MeasureHandler {
           label
         });
       });
-      label.fillColor = Cesium.Color.fromCssColorString("#ffa500");
+      label.fillColor = Cesium.Color.fromCssColorString(this.color);
       label.text = `${(distanceAdd * 0.001).toFixed(2)}km`;
       that.dataSource.entities.add({
         position: positions[positions.length - 1],
@@ -368,7 +380,10 @@ class MeasureHandler {
     };
     const setShowEntity = () => {
       if (positions.length == 2) {
-        // 线
+        // 线在首次创建时取当前颜色，之后不再改这条线
+        if (!line) {
+          polyline = Object.assign({}, that.entity_options.polyline);
+        }
         polyline.positions = new Cesium.CallbackProperty(() => {
           const newPositions = [positions, positions[0]];
           return newPositions.flat(Infinity);
@@ -378,6 +393,8 @@ class MeasureHandler {
         });
       }
       if (positions.length > 2 && !measureEntity) {
+        polygon = Object.assign({}, that.entity_options.polygon);
+        label = that.copyLabelOption();
         label.text = new Cesium.CallbackProperty(() => {
           return `${allArea.toFixed(2)}km²`;
         }, false);
@@ -427,10 +444,10 @@ class MeasureHandler {
         ? isMove == false
         : cartesian.equals(positions[positions.length - 1]);
       if (!cartesian || noCanAddPoint) return;
-      // 点
+      // 新点使用当前颜色，已有点保持原色
       that.dataSource_measure.entities.add({
         position: cartesian,
-        point
+        point: that.copyPointOption()
       });
       // 坐标处理
       positions.push(cartesian);
@@ -485,7 +502,7 @@ class MeasureHandler {
       positions.forEach(p => {
         that.dataSource.entities.add({
           position: p,
-          point
+          point: that.copyPointOption()
         });
       });
       let centerPosition = Cesium.BoundingSphere.fromPoints(positions).center;
@@ -534,7 +551,6 @@ class MeasureHandler {
     // 清空绘制存储
     this.dataSource.entities.removeAll();
     this.dataSource_measure.entities.removeAll();
-    this.htmlTagCollection.removeAll(true);
   }
   /**注销测量对象 */
   destroy() {
@@ -544,8 +560,6 @@ class MeasureHandler {
     this.dataSource = null;
     this.viewer.dataSources.remove(this.dataSource_measure, true);
     this.dataSource_measure = null;
-    this.htmlTagCollection.destroy();
-    this.htmlTagCollection = null;
     this.viewer = null;
     this.scene = null;
     this.ellipsoid = null;

@@ -240,10 +240,13 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  editGraphicStyle: {
+  // 编辑样式，与绘制 options 使用同一套字段
+  options: {
     type: Object,
     default: () => {
-      return {};
+      return {
+        entireMove: true
+      };
     }
   },
   inputTextArea: {
@@ -413,11 +416,26 @@ const confirm = () => {
 const getData = () => {
   return editData.value;
 };
+// 编辑样式。外部 options 覆盖默认值，后续更新在此基础上合并
+let editOptions = {
+  entireMove: true,
+  ...(props.options || {})
+};
+/** 更新编辑样式，保证与绘制样式一致 */
+const upDataOptions = options => {
+  editOptions = { ...editOptions, ...(options || {}) };
+  newDrawCustomEdit?.upDataOptions(editOptions);
+  // 确认结果里的样式与当前编辑样式保持一致
+  if (editOptions.style != null) editData.value.style = editOptions.style;
+  if (editOptions.outlineWidth != null) {
+    editData.value.outlineWidth = editOptions.outlineWidth;
+  }
+};
 onBeforeMount(() => {
-  const drawCustomEditOption = Object.assign(props.editGraphicStyle, {
+  newDrawCustomEdit = new DrawCustomEdit({
+    ...editOptions,
     endCallback: mapEditChange
   });
-  newDrawCustomEdit = new DrawCustomEdit(drawCustomEditOption);
 });
 onMounted(() => {
   upDataEditData(props.drawResult);
@@ -436,7 +454,7 @@ const upDataEditData = drawResult => {
   setEditData(editData.value);
   updataContent.value++;
 };
-defineExpose({ getData, upDataEditData });
+defineExpose({ getData, upDataEditData, upDataOptions });
 </script>
 <style scoped lang="scss">
 .tip {

@@ -28,33 +28,45 @@ class MeasureHandler {
       color: "#ffff00",
       alpha: 0.5,
       endType: "contextmenu",
-      moveEvent: true // 移动事件
+      moveEvent: true, // 移动事件
+      coordinateFormat: "lonlat" // 坐标展示格式，默认经纬度
     };
     const newOptions = Object.assign(defaultOptions, options);
     this.endType = newOptions.endType;
     this.moveEvent = newOptions.moveEvent;
-    const color = newOptions.color;
-    const colorWithAlpha = getColorAlpha(newOptions.color, newOptions.alpha);
+    // 坐标格式可在对象上直接修改，后续测量按当前值生成文本
+    this.coordinateFormat = newOptions.coordinateFormat;
+    this.setColor(newOptions.color, newOptions.alpha);
+  }
+  /**更新绘制颜色。每次新建样式对象，已绘制的测量仍持有旧颜色 */
+  setColor(color, alpha) {
+    this.color = color ?? this.color ?? "#ffff00";
+    this.alpha = alpha ?? this.alpha ?? 0.5;
+    const colorWithAlpha = getColorAlpha(this.color, this.alpha);
     this.feature_options = {
       point: {
         radius: 4, // 半径
         fill: new ol.style.Fill({ color: colorWithAlpha }),
-        stroke: new ol.style.Stroke({ color, width: 2 })
+        stroke: new ol.style.Stroke({ color: this.color, width: 2 })
       },
       label: {
         font: "bold 16px sans-serif",
-        fill: new ol.style.Fill({ color }),
+        fill: new ol.style.Fill({ color: this.color }),
         stroke: new ol.style.Stroke({ color: "#000000", width: 2 }),
         scale: 1
       },
       polyline: {
-        stroke: new ol.style.Stroke({ color, width: 2 })
+        stroke: new ol.style.Stroke({ color: this.color, width: 2 })
       },
       polygon: {
         fill: new ol.style.Fill({ color: colorWithAlpha }), // 半透明填充
-        stroke: new ol.style.Stroke({ color, width: 2 })
+        stroke: new ol.style.Stroke({ color: this.color, width: 2 })
       }
     };
+  }
+  /**复制当前点样式，只给新测量使用 */
+  copyPointOption() {
+    return Object.assign({}, this.feature_options.point);
   }
   /**开启绘制
    * @param {String} type
@@ -76,19 +88,24 @@ class MeasureHandler {
     that.stop();
     // 设置样式为crosshair
     this.olMap.getViewport().style.cursor = "crosshair";
-    const point = Object.assign({}, this.feature_options.point);
-    let label = Object.assign({ offsetY: -20 }, this.feature_options.label);
     this.events = {
       click: function (evt) {
         let coordinate = that.olMap.getCoordinateFromPixel(evt.pixel);
-        const lon = coordinate[0];
-        const lat = coordinate[1];
-        const degrees_new = coordinateConversionTool.degreesToDegrees60(
-          lon,
-          lat,
-          true
-        );
-        const text = `${degrees_new.showLatString}\n${degrees_new.showLongString}\n`;
+        const lon = coordinate[0].toFixed(5);
+        const lat = coordinate[1].toFixed(5);
+        // 按当前坐标格式生成标注，lonlat 为经纬度，dms 为度分秒
+        let text = `X: ${lon}\nY: ${lat}`;
+        if (that.coordinateFormat === "dms") {
+          const degrees_new = coordinateConversionTool.degreesToDegrees60(
+            lon,
+            lat,
+            true
+          );
+          text = `${degrees_new.showLatString}\n${degrees_new.showLongString}\n`;
+        }
+        // 每次点击按当前颜色新建样式，不改已有测量
+        const point = that.copyPointOption();
+        const label = Object.assign({ offsetY: -20 }, that.feature_options.label);
         label.text = text;
         const feature = new ol.Feature({
           geometry: new ol.geom.Point(coordinate)
@@ -141,8 +158,9 @@ class MeasureHandler {
           { units: "kilometers" }
         );
         const text = `${distance.toFixed(2)}km`;
-        label.text = text;
         if (!measureLabel) {
+          label = Object.assign({}, that.feature_options.label);
+          label.text = text;
           measureLabel = new ol.Feature({
             geometry: new ol.geom.Point(center)
           });
@@ -216,7 +234,7 @@ class MeasureHandler {
       });
       currentPoint.setStyle(
         new ol.style.Style({
-          image: new ol.style.Circle(point)
+          image: new ol.style.Circle(that.copyPointOption())
         })
       );
       that.layer_measure.getSource().addFeature(currentPoint);
@@ -251,7 +269,10 @@ class MeasureHandler {
       }
       // 线
       if (!measureGraphics) {
-        addLabel.fill.setColor("#ffa500");
+        // 线在首次创建时取当前颜色，之后不再改这条线
+        polyline = Object.assign({}, that.feature_options.polyline);
+        addLabel = cloneDeep(that.feature_options.label);
+        addLabel.fill.setColor(that.color);
         addLabel.text = `${distanceAdd.toFixed(2)}km`;
         addLabel.offsetY = -20;
         measureGraphics = {
@@ -322,7 +343,7 @@ class MeasureHandler {
         });
         rightEndPoint.setStyle(
           new ol.style.Style({
-            image: new ol.style.Circle(point)
+            image: new ol.style.Circle(that.copyPointOption())
           })
         );
         that.layer.getSource().addFeature(rightEndPoint);
@@ -375,7 +396,8 @@ class MeasureHandler {
     const setShowFeature = () => {
       if (positions.length == 2) {
         if (!line) {
-          // 线
+          // 线在首次创建时取当前颜色，之后不再改这条线
+          polyline = Object.assign({}, that.feature_options.polyline);
           line = new ol.Feature({
             geometry: new ol.geom.LineString(positions)
           });
@@ -403,6 +425,8 @@ class MeasureHandler {
         if (!measureGraphics) {
           that.layer_measure.getSource().removeFeature(line);
           line = null;
+          polygon = Object.assign({}, that.feature_options.polygon);
+          label = Object.assign({}, that.feature_options.label);
           label.text = `${allArea.toFixed(2)}km²`;
           polygon.text = new ol.style.Text(label);
           measureGraphics = new ol.Feature({
@@ -455,7 +479,7 @@ class MeasureHandler {
       });
       currentPoint.setStyle(
         new ol.style.Style({
-          image: new ol.style.Circle(point)
+          image: new ol.style.Circle(that.copyPointOption())
         })
       );
       that.layer_measure.getSource().addFeature(currentPoint);
@@ -515,7 +539,7 @@ class MeasureHandler {
         });
         rightEndPoint.setStyle(
           new ol.style.Style({
-            image: new ol.style.Circle(point)
+            image: new ol.style.Circle(that.copyPointOption())
           })
         );
         that.layer.getSource().addFeature(rightEndPoint);

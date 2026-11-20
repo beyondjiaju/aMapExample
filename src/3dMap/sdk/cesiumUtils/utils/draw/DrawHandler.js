@@ -6,9 +6,12 @@ import {
   shapeCoordinates,
   coordinateConversionTool
 } from "@/3dMap/sdk/cesiumUtils";
-/**获取结束类型 */
+/**获取结束类型，已是 Cesium 事件类型时保持不变 */
 const getEndType = endType => {
-  if (endType === "dblclick") {
+  if (
+    endType === "dblclick" ||
+    endType === Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
+  ) {
     return Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK;
   }
   return Cesium.ScreenSpaceEventType.RIGHT_CLICK;
@@ -22,19 +25,28 @@ const getEndTipText = mode_endType => {
 /**绘制对象 */
 class DrawHandler {
   constructor(viewer, option = {}) {
+    // 与二维 DrawHandler 使用同一套入参，颜色在内部再转成 Cesium.Color
     const defaultOption = {
-      style: "fill", // outLine
-      color: Cesium.Color.fromCssColorString("#FFFF00").withAlpha(0.5),
-      outlineColor: Cesium.Color.fromCssColorString("#FFFF00"),
+      style: "fill", // outline
+      color: "#ffff00",
+      alpha: 0.5,
+      outlineColor: "#ffff00",
+      outlineAlpha: 1,
       outlineWidth: 4,
       moveEvent: true, // 移动事件
       moveCoordinate: true, // 移动实时坐标，moveEvent为true生效
+      moveCoordinateFormat: "lonlat", // 鼠标位置坐标格式，lonlat 经纬度，dms 度分秒
       endType: "contextmenu"
     };
     // 合并参数
-    const newOption = Object.assign(defaultOption, option);
-    const { moveCoordinate, endType, ...other } = newOption;
-    this.moveCoordinate = moveCoordinate;
+    const newOption = Object.assign({}, defaultOption, option);
+    this.moveCoordinate = newOption.moveCoordinate;
+    this.moveCoordinateFormat = newOption.moveCoordinateFormat;
+    // 保留原始颜色，后续只改透明度时仍能转成新的 Cesium.Color
+    this.rawColor = newOption.color;
+    this.rawAlpha = newOption.alpha;
+    this.rawOutlineColor = newOption.outlineColor;
+    this.rawOutlineAlpha = newOption.outlineAlpha;
     this.moveLabel = null;
     this.tipEntity = null;
     this.viewer = viewer;
@@ -43,11 +55,8 @@ class DrawHandler {
     this.canvas = this.scene.canvas;
     this.handler = new Cesium.ScreenSpaceEventHandler(this.canvas);
     this.drawFinished = new Cesium.Event();
-    // 样式
-    this.options = {
-      ...other,
-      endType: getEndType(endType)
-    };
+    // 样式转为绘制过程可直接使用的数据
+    this.options = this.toInnerOptions(newOption, option);
     // 添加过程中
     this.dataSource_draw = new Cesium.CustomDataSource("drawDataSource_draw");
     this.viewer.dataSources.add(this.dataSource_draw);
@@ -67,15 +76,15 @@ class DrawHandler {
    * @param {String} type 绘制类型
    * @param {Object} options 根据绘制类型定义绘制样式options
    * @param {String} options.style default: fill
-   * @param {Object} options.color Cesium.Color
-   * @param {Object} options.outlineColor Cesium.Color
-   * @param {Number} options.outlineWidth default: 2 style:outline模式下生效
+   * @param {String} options.color 填充色，与二维一致传颜色字符串
+   * @param {Number} options.alpha 填充透明度
+   * @param {String} options.outlineColor 边线色
+   * @param {Number} options.outlineAlpha 边线透明度
+   * @param {String} options.moveCoordinateFormat lonlat | dms
+   * @param {Number} options.outlineWidth default: 4 线宽
    */
   start(type, options = {}) {
-    let newStartOptions = options || {};
-    if (newStartOptions.endType) {
-      newStartOptions["endType"] = getEndType(newStartOptions.endType);
-    }
+    const newStartOptions = options || {};
     if (type == "point") {
       this.drawPoint(newStartOptions);
     }
@@ -104,14 +113,102 @@ class DrawHandler {
       this.newOptions[name] = value;
     }
   }
+  /** 颜色字符串或 Cesium.Color 转为内部使用的 Cesium.Color，alpha 为空时保留原透明度 */
+  toCesiumColor(color, alpha) {
+    const result =
+      color instanceof Cesium.Color
+        ? Cesium.Color.clone(color)
+        : Cesium.Color.fromCssColorString(color || "#ffff00");
+    if (alpha == null || alpha === "") return result;
+    return result.withAlpha(Number(alpha));
+  }
+  /** 按二维入参生成内部 options */
+  toInnerOptions(merged, source = {}) {
+    const colorAlpha =
+      merged.color instanceof Cesium.Color &&
+      !Object.prototype.hasOwnProperty.call(source, "alpha")
+        ? null
+        : merged.alpha;
+    const outlineAlpha =
+      merged.outlineColor instanceof Cesium.Color &&
+      !Object.prototype.hasOwnProperty.call(source, "outlineAlpha")
+        ? null
+        : merged.outlineAlpha;
+    return {
+      ...merged,
+      color: this.toCesiumColor(merged.color, colorAlpha),
+      outlineColor: this.toCesiumColor(merged.outlineColor, outlineAlpha),
+      endType: getEndType(merged.endType)
+    };
+  }
+  /** 将本次绘制入参转成内部数据，并同步鼠标坐标开关与格式 */
+  normalizeOptions(options = {}) {
+    const next = { ...options };
+    if (typeof next.moveCoordinate === "boolean") {
+      this.moveCoordinate = next.moveCoordinate;
+    }
+    if (next.moveCoordinateFormat) {
+      this.moveCoordinateFormat = next.moveCoordinateFormat;
+    }
+    if (next.color != null) this.rawColor = next.color;
+    if (next.alpha != null) this.rawAlpha = next.alpha;
+    if (next.outlineColor != null) this.rawOutlineColor = next.outlineColor;
+    if (next.outlineAlpha != null) this.rawOutlineAlpha = next.outlineAlpha;
+    if (next.color != null || next.alpha != null) {
+      const alpha =
+        next.color instanceof Cesium.Color && next.alpha == null
+          ? null
+          : next.alpha != null
+            ? next.alpha
+            : this.rawAlpha;
+      next.color = this.toCesiumColor(
+        next.color != null ? next.color : this.rawColor,
+        alpha
+      );
+    }
+    if (next.outlineColor != null || next.outlineAlpha != null) {
+      const alpha =
+        next.outlineColor instanceof Cesium.Color && next.outlineAlpha == null
+          ? null
+          : next.outlineAlpha != null
+            ? next.outlineAlpha
+            : this.rawOutlineAlpha;
+      next.outlineColor = this.toCesiumColor(
+        next.outlineColor != null ? next.outlineColor : this.rawOutlineColor,
+        alpha
+      );
+    }
+    if (next.endType) next.endType = getEndType(next.endType);
+    return next;
+  }
+  /** 按当前格式生成鼠标位置文字，lonlat 为经纬度，dms 为度分秒 */
+  getMoveCoordinateText(lon, lat) {
+    if (this.moveCoordinateFormat === "dms") {
+      const degrees_new = coordinateConversionTool.degreesToDegrees60(
+        lon,
+        lat,
+        true
+      );
+      if (degrees_new) {
+        // Cesium.Label 会过滤 ′ ″，换成可显示的 ʹ ʺ
+        return `${degrees_new.showLatString}\n${degrees_new.showLongString}\n`
+          .replace(/\u2032/g, "\u02B9")
+          .replace(/\u2033/g, "\u02BA");
+      }
+    }
+    const lonText = Number(lon).toFixed(5);
+    const latText = Number(lat).toFixed(5);
+    return `X: ${lonText}\nY: ${latText}`;
+  }
   /**初始化绘制
    * 合并绘制参数并重置上一次绘制状态
    * @param {Object} options 绘制样式参数
    */
   initDraw(options) {
     const that = this;
-    // 合并绘制参数
-    that.newOptions = Object.assign(that.options, options);
+    // 先把字符串颜色、结束方式转成内部数据，再合并
+    const next = that.normalizeOptions(options || {});
+    that.newOptions = Object.assign(that.options, next);
     // 停止上一次绘制并清空过程图形
     that.stop();
     // 设置鼠标样式为crosshair
@@ -154,6 +251,42 @@ class DrawHandler {
       }
       onMove(move_cartesian);
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+  }
+  /** 记录样式和边线宽度，结束后编辑预览仍按 outlineWidth 描边 */
+  writeShapeStyle(properties) {
+    if (!properties) return;
+    properties.style = this.newOptions.style;
+    properties.outlineWidth = Cesium.defaultValue(this.newOptions.outlineWidth, 4);
+  }
+  /** 线统一使用边线颜色、透明度与宽度 */
+  getOutlineLineOptions() {
+    return {
+      width: Cesium.defaultValue(this.newOptions.outlineWidth, 4),
+      material: new PolylineAntialiasingMaterialProperty({
+        color: this.newOptions.outlineColor
+      })
+    };
+  }
+  /**
+   * 面图形自带 outline 不能设置像素宽度，描边统一用折线。
+   * 各图形只负责提供边界坐标。
+   * @param {Function} getPositions 返回 Cartesian3[]
+   */
+  createOutlinePolyline(getPositions) {
+    return {
+      positions: new Cesium.CallbackProperty(() => {
+        const linePositions = getPositions();
+        return linePositions && linePositions.length ? linePositions : [];
+      }, false),
+      ...this.getOutlineLineOptions()
+    };
+  }
+  /** 结束时把描边折线收成静态坐标，避免绘制状态清空后边线消失 */
+  freezeOutlinePolyline(polyline) {
+    if (!polyline || !polyline.positions || !polyline.positions.getValue) return;
+    polyline.positions = polyline.positions.getValue(
+      this.viewer.clock.currentTime
+    );
   }
   /**添加实体并触发绘制结束监听
    * @param {Object} entityOption 实体参数
@@ -303,16 +436,7 @@ class DrawHandler {
             positions: new Cesium.CallbackProperty(() => {
               return positions;
             }, false),
-            width: Cesium.defaultValue(that.newOptions.width, 4.0),
-            material: new PolylineAntialiasingMaterialProperty({
-              color: new Cesium.Color(
-                that.newOptions.color.red,
-                that.newOptions.color.green,
-                that.newOptions.color.blue,
-                1
-              )
-              // color: Cesium.Color.YELLOW
-            })
+            ...that.getOutlineLineOptions()
           },
           properties: {
             type: "polyline"
@@ -364,6 +488,7 @@ class DrawHandler {
         entityOption.properties.coordinates = that.cartesianArrayToDegreesArray(
           entityOption.polyline.positions
         );
+        that.writeShapeStyle(entityOption.properties);
         // 添加并触发绘制结束监听
         that.addAndRaiseFinished(entityOption);
       }
@@ -427,18 +552,11 @@ class DrawHandler {
               }
               return linePositions;
             }, false),
-            width: Cesium.defaultValue(that.newOptions.width, 4.0),
-            material: new PolylineAntialiasingMaterialProperty({
-              color: that.newOptions.outlineColor
-            })
+            ...that.getOutlineLineOptions()
           }
         };
         if (that.newOptions.style == "outline") {
           entityOption.name = "polyline";
-          polylineOption.polyline.material =
-            new PolylineAntialiasingMaterialProperty({
-              color: that.newOptions.color
-            });
           entityOption.polyline = polylineOption.polyline;
         }
         line = that.dataSource_draw.entities.add(polylineOption);
@@ -454,8 +572,7 @@ class DrawHandler {
           hierarchy: new Cesium.CallbackProperty(() => {
             return new Cesium.PolygonHierarchy(positions);
           }, false),
-          material: that.newOptions.color,
-          outline: true
+          material: that.newOptions.color
         };
         drawEntity = that.dataSource_draw.entities.add(entityOption);
       }
@@ -514,6 +631,15 @@ class DrawHandler {
             ).positions;
           entityOption.properties.coordinates =
             that.cartesianArrayToDegreesArray(entityOption.polygon.hierarchy);
+          // 过程边线在清空绘制图层时会被删掉，结果实体改带这条折线
+          if (line && line.polyline && line.polyline.positions) {
+            entityOption.polyline = {
+              positions: line.polyline.positions.getValue(
+                that.viewer.clock.currentTime
+              ),
+              ...that.getOutlineLineOptions()
+            };
+          }
         }
         let coordinatesNew = JSON.parse(
           JSON.stringify(entityOption.properties.coordinates)
@@ -525,6 +651,7 @@ class DrawHandler {
         if (kinks.features.length > 0) {
           message("请正确绘制多边形！", { type: "warning" });
         } else {
+          that.writeShapeStyle(entityOption.properties);
           // 添加并触发绘制结束监听
           that.addAndRaiseFinished(entityOption);
         }
@@ -553,8 +680,27 @@ class DrawHandler {
       // 移动坐标添加
       this.addMoveLabel(cartesian);
     };
+    const getRectangleOutlinePositions = () => {
+      if (!positions.start || !positions.end) return [];
+      const c = Cesium.Rectangle.fromCartesianArray([
+        positions.start,
+        positions.end
+      ]);
+      const radiansArray = [
+        [c.west, c.north],
+        [c.west, c.south],
+        [c.east, c.south],
+        [c.east, c.north],
+        [c.west, c.north]
+      ];
+      return Cesium.Cartesian3.fromRadiansArray(radiansArray.flat(Infinity));
+    };
     const setDrawEntity = () => {
       const id = Date.now();
+      // 填充与边线共用同一条可设宽度的描边
+      const outlinePolyline = that.createOutlinePolyline(
+        getRectangleOutlinePositions
+      );
       if (that.newOptions.style == "fill") {
         entityOption = {
           id,
@@ -568,9 +714,9 @@ class DrawHandler {
             }, false),
             height: 0.1,
             material: that.newOptions.color,
-            outline: true,
-            outlineColor: that.newOptions.outlineColor
+            outline: false
           },
+          polyline: outlinePolyline,
           properties: {
             type: "rectangle"
           }
@@ -579,28 +725,7 @@ class DrawHandler {
         entityOption = {
           id,
           name: "polyline",
-          polyline: {
-            positions: new Cesium.CallbackProperty(() => {
-              const c = Cesium.Rectangle.fromCartesianArray([
-                positions.start,
-                positions.end
-              ]);
-              const radiansArray = [
-                [c.west, c.north],
-                [c.west, c.south],
-                [c.east, c.south],
-                [c.east, c.north],
-                [c.west, c.north]
-              ];
-              return Cesium.Cartesian3.fromRadiansArray(
-                radiansArray.flat(Infinity)
-              );
-            }, false),
-            width: Cesium.defaultValue(that.newOptions.outlineWidth, 4.0),
-            material: new PolylineAntialiasingMaterialProperty({
-              color: that.newOptions.color
-            })
-          },
+          polyline: outlinePolyline,
           properties: {
             type: "rectangle"
           }
@@ -610,12 +735,9 @@ class DrawHandler {
     };
     const setDrawEntityEnd = () => {
       entityOption.properties.points = positions;
-      if (that.newOptions.style == "outline") {
-        entityOption.polyline.positions =
-          entityOption.polyline.positions.getValue(
-            that.viewer.clock.currentTime
-          );
-      } else {
+      that.writeShapeStyle(entityOption.properties);
+      that.freezeOutlinePolyline(entityOption.polyline);
+      if (that.newOptions.style != "outline") {
         entityOption.rectangle.coordinates =
           entityOption.rectangle.coordinates.getValue(
             that.viewer.clock.currentTime
@@ -714,8 +836,16 @@ class DrawHandler {
       // 移动坐标添加
       this.addMoveLabel(cartesian);
     };
+    const getCircleOutlinePositions = () => {
+      if (!positions.start) return [];
+      return shapeCoordinates.getCirclePositions(positions.start, radius);
+    };
     const setDrawEntity = () => {
       const id = Date.now();
+      // 填充与边线共用同一条可设宽度的描边
+      const outlinePolyline = that.createOutlinePolyline(
+        getCircleOutlinePositions
+      );
       if (that.newOptions.style == "fill") {
         entityOption = {
           id,
@@ -730,9 +860,9 @@ class DrawHandler {
             }, false),
             material: that.newOptions.color,
             height: Cesium.defaultValue(that.newOptions.height, 0.05),
-            outline: true,
-            outlineColor: that.newOptions.outlineColor
+            outline: false
           },
+          polyline: outlinePolyline,
           properties: {
             type: "circle"
           }
@@ -741,19 +871,7 @@ class DrawHandler {
         entityOption = {
           id,
           name: "polyline",
-          polyline: {
-            positions: new Cesium.CallbackProperty(() => {
-              const linePositions = shapeCoordinates.getCirclePositions(
-                positions.start,
-                radius
-              );
-              return linePositions;
-            }, false),
-            width: Cesium.defaultValue(that.newOptions.outlineWidth, 4.0),
-            material: new PolylineAntialiasingMaterialProperty({
-              color: that.newOptions.color
-            })
-          },
+          polyline: outlinePolyline,
           properties: {
             type: "circle"
           }
@@ -764,12 +882,9 @@ class DrawHandler {
     const setDrawEntityEnd = () => {
       // 记录
       entityOption.properties.points = positions;
-      if (that.newOptions.style == "outline") {
-        entityOption.polyline.positions =
-          entityOption.polyline.positions.getValue(
-            that.viewer.clock.currentTime
-          );
-      } else {
+      that.writeShapeStyle(entityOption.properties);
+      that.freezeOutlinePolyline(entityOption.polyline);
+      if (that.newOptions.style != "outline") {
         entityOption.ellipse.semiMajorAxis = radius;
         entityOption.ellipse.semiMinorAxis = radius;
       }
@@ -869,12 +984,7 @@ class DrawHandler {
       drawEntity,
       drawPositions = [];
     let isMove = true;
-    let polylineOption = {
-      width: Cesium.defaultValue(that.newOptions.outlineWidth, 4.0),
-      material: new PolylineAntialiasingMaterialProperty({
-        color: that.newOptions.color
-      })
-    };
+    let polylineOption = that.getOutlineLineOptions();
     const setTip = cartesian => {
       // 添加tip
       const tipText = positions.first && hasSecond ? endTipText : "点击绘制";
@@ -908,6 +1018,12 @@ class DrawHandler {
           // 清除line
           that.dataSource_draw.entities.removeAll();
           // 添加
+          const outlinePolyline = that.createOutlinePolyline(() => {
+            if (!drawPositions.length) return [];
+            return Cesium.Cartesian3.fromDegreesArray(
+              drawPositions.flat(Infinity)
+            );
+          });
           if (that.newOptions.style == "fill") {
             entityOption.name = "polygon";
             entityOption.polygon = {
@@ -920,17 +1036,12 @@ class DrawHandler {
               }, false),
               material: that.newOptions.color,
               height: 0.1,
-              outline: true,
-              outlineColor: that.newOptions.outlineColor
+              outline: false
             };
+            entityOption.polyline = outlinePolyline;
           } else if (that.newOptions.style == "outline") {
             entityOption.name = "polyline";
-            polylineOption.positions = new Cesium.CallbackProperty(() => {
-              return Cesium.Cartesian3.fromDegreesArray(
-                drawPositions.flat(Infinity)
-              );
-            }, false);
-            entityOption.polyline = polylineOption;
+            entityOption.polyline = outlinePolyline;
           }
           drawEntity = that.dataSource_draw.entities.add(entityOption);
         }
@@ -942,12 +1053,9 @@ class DrawHandler {
       entityOption.properties.radius = radius;
       entityOption.properties.startAngle = startAngle;
       entityOption.properties.endAngle = endAngle;
-      if (that.newOptions.style == "outline") {
-        entityOption.polyline.positions =
-          entityOption.polyline.positions.getValue(
-            that.viewer.clock.currentTime
-          );
-      } else {
+      that.writeShapeStyle(entityOption.properties);
+      that.freezeOutlinePolyline(entityOption.polyline);
+      if (that.newOptions.style != "outline") {
         entityOption.polygon.hierarchy =
           entityOption.polygon.hierarchy.getValue(
             that.viewer.clock.currentTime
@@ -1048,12 +1156,7 @@ class DrawHandler {
       drawEntity,
       drawPositions = [];
     let isMove = true;
-    let polylineOption = {
-      width: Cesium.defaultValue(that.newOptions.outlineWidth, 4.0),
-      material: new PolylineAntialiasingMaterialProperty({
-        color: that.newOptions.color
-      })
-    };
+    let polylineOption = that.getOutlineLineOptions();
     const setTip = cartesian => {
       // 添加tip
       const tipText = positions.first && hasSecond ? endTipText : "点击绘制";
@@ -1085,6 +1188,12 @@ class DrawHandler {
           // 清除line
           that.dataSource_draw.entities.removeAll();
           // 添加
+          const outlinePolyline = that.createOutlinePolyline(() => {
+            if (!drawPositions.length) return [];
+            return Cesium.Cartesian3.fromDegreesArray(
+              drawPositions.flat(Infinity)
+            );
+          });
           if (that.newOptions.style == "fill") {
             entityOption.name = "polygon";
             entityOption.polygon = {
@@ -1097,17 +1206,12 @@ class DrawHandler {
               }, false),
               material: that.newOptions.color,
               height: 0.1,
-              outline: true,
-              outlineColor: that.newOptions.outlineColor
+              outline: false
             };
+            entityOption.polyline = outlinePolyline;
           } else if (that.newOptions.style == "outline") {
             entityOption.name = "polyline";
-            polylineOption.positions = new Cesium.CallbackProperty(() => {
-              return Cesium.Cartesian3.fromDegreesArray(
-                drawPositions.flat(Infinity)
-              );
-            }, false);
-            entityOption.polyline = polylineOption;
+            entityOption.polyline = outlinePolyline;
           }
           drawEntity = that.dataSource_draw.entities.add(entityOption);
         }
@@ -1117,12 +1221,9 @@ class DrawHandler {
       // 记录
       entityOption.properties.points = positions;
       entityOption.properties.radius = radius;
-      if (that.newOptions.style == "outline") {
-        entityOption.polyline.positions =
-          entityOption.polyline.positions.getValue(
-            that.viewer.clock.currentTime
-          );
-      } else {
+      that.writeShapeStyle(entityOption.properties);
+      that.freezeOutlinePolyline(entityOption.polyline);
+      if (that.newOptions.style != "outline") {
         entityOption.polygon.hierarchy =
           entityOption.polygon.hierarchy.getValue(
             that.viewer.clock.currentTime
@@ -1230,8 +1331,13 @@ class DrawHandler {
     // 添加
     const entity = this.dataSource.entities.add(options);
     // 记录
-    if (entityType == "polyline") {
-      options[entityType].material = options[entityType].material.color;
+    // 填充图形上的描边折线同样记下颜色，避免把材质对象写进结果
+    if (
+      options.polyline &&
+      options.polyline.material &&
+      options.polyline.material.color
+    ) {
+      options.polyline.material = options.polyline.material.color;
     }
     if (!entity.properties) entity.properties = {};
     // callback数据处理
@@ -1426,12 +1532,7 @@ class DrawHandler {
     const carto = Cesium.Cartographic.fromCartesian(cartesian);
     const lon = Cesium.Math.toDegrees(carto.longitude);
     const lat = Cesium.Math.toDegrees(carto.latitude);
-    const degrees_new = coordinateConversionTool.degreesToDegrees60(
-      lon,
-      lat,
-      true
-    );
-    const text = `${degrees_new.longString}\n${degrees_new.latString}\n`;
+    const text = this.getMoveCoordinateText(lon, lat);
     if (!this.moveLabel) {
       this.moveLabel = this.dataSource_draw.entities.add({
         position: cartesian,

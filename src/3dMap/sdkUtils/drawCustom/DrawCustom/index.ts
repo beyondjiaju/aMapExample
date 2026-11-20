@@ -9,12 +9,15 @@ class DrawCustom {
   handler: any;
   drawType: any;
   drawOptions: any;
+  handlerOptions: any;
   onDrawFinished: any;
   mapEmitterOff: any;
   constructor(option?) {
     this.handler = null;
     this.drawType = "";
     this.drawOptions = null;
+    // 与 DrawHandler 入参一致，创建时和后续更新都用这份
+    this.handlerOptions = { ...(option?.handlerOptions || {}) };
     this.onDrawFinished = option?.onDrawFinished;
     this.mapEmitterOff = null;
     this.setByMapMode();
@@ -41,9 +44,9 @@ class DrawCustom {
   setByMapMode() {
     const mapMode = mapData().mapMode;
     if (mapMode === "cesium" && viewer && !viewer.isDestroyed?.()) {
-      this.handler = new DrawHandlerCesium(viewer);
+      this.handler = new DrawHandlerCesium(viewer, this.handlerOptions);
     } else if (mapMode === "ol" && olMap) {
-      this.handler = new DrawHandlerOl(olMap);
+      this.handler = new DrawHandlerOl(olMap, this.handlerOptions);
     }
     this.handler?.drawFinished.addEventListener(shap => {
       this.onDrawFinished?.(shap);
@@ -60,7 +63,14 @@ class DrawCustom {
   stop() {
     this.handler?.stop();
   }
+  /** 更新绘制样式，下次创建绘制对象和 start 都使用最新参数 */
+  upDataOptions(options) {
+    this.handlerOptions = { ...this.handlerOptions, ...(options || {}) };
+  }
   start(type, options) {
+    if (options) {
+      this.handlerOptions = { ...this.handlerOptions, ...options };
+    }
     this.handler?.start(type, options);
   }
   remove(shap) {

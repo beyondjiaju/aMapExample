@@ -30,11 +30,16 @@ class PolylineAntialiasingMaterialProperty {
 const shader = `
     czm_material czm_getMaterial(czm_materialInput materialInput){
         czm_material material = czm_getDefaultMaterial(materialInput);
-        vec2 st = materialInput.st; 
-        material.diffuse = color.rgb; 
-        float dis = 1.0 - abs(0.5 - st.t) * 2.0;
-        material.alpha = dis * color.a; 
-        return material; 
+        vec2 st = materialInput.st;
+        material.diffuse = color.rgb;
+        // dist：0 为线中心，1 为线边缘。整段线性透明会让线发虚
+        float dist = abs(st.t - 0.5) * 2.0;
+        float fw = fwidth(dist);
+        // 过渡限制在约 1 像素，且不超过线宽的 12%，主体保持实色
+        float feather = clamp(fw, 0.001, 0.12);
+        float alpha = 1.0 - smoothstep(1.0 - feather, 1.0, dist);
+        material.alpha = alpha * color.a;
+        return material;
     }
 `;
 Cesium.Material._materialCache.addMaterial(

@@ -50,7 +50,7 @@
         :labelWidth="drawCustomEditLabelWidth"
         :cssText="'position: relative;'"
         :inputTextArea="props.editInputTextArea"
-        :editGraphicStyle="drawCustomEditGraphicStyle"
+        :options="drawCustomEditOptions"
         @cancel="inputCancel"
         @confirm="inputConfirm"
         @editChange="drawCustomEditChange"
@@ -148,7 +148,7 @@ const props = defineProps({
     type: Number,
     default: 80
   },
-  drawCustomEditGraphicStyle: {
+  drawCustomEditOptions: {
     type: Object,
     default: () => {
       return {};

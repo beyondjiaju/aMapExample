@@ -1,7 +1,7 @@
 /* 通用色不随系统色系变化，供文字和控件使用 */
 :root {
-  --color-font: rgb(255 255 255 / 70%);
-  --color-font-title: #ffffff;
+  --color-font: rgb(255 255 255 / 60%);
+  --color-font-title: rgb(255 255 255 / 80%);
   --color-font-select: rgb(255 255 255);
   /* 任意系统色通用灰，由浅到深 */
   --color-grey-1: #bfbfbf;

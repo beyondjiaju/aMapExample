@@ -8,10 +8,11 @@ class DrawHandlerEdit {
   constructor(viewer, operateOption) {
     this.operateOption = Object.assign(
       {
-        color: "#DEDEDE",
+        color: "#ffff00",
         alpha: 0.6,
-        outlineColor: "",
+        outlineColor: "#ffff00",
         outlineAlpha: 1,
+        outlineWidth: 4,
         entireMove: true
       },
       operateOption
@@ -33,6 +34,10 @@ class DrawHandlerEdit {
     // entity options
     this.option = null;
     this.entity = null;
+    this.setEntityOptions();
+  }
+  /** 按当前 operateOption 生成编辑图形样式 */
+  setEntityOptions() {
     this.entity_options = {
       point: {
         color: Cesium.Color.fromCssColorString("white"),
@@ -54,19 +59,19 @@ class DrawHandlerEdit {
         material: new PolylineAntialiasingMaterialProperty({
           color: Cesium.Color.fromCssColorString(
             this.operateOption.outlineColor
+          ).withAlpha(
+            this.operateOption.outlineAlpha == null
+              ? 1
+              : this.operateOption.outlineAlpha
           )
         }),
-        width: 10,
+        width: this.operateOption.outlineWidth || 4,
         zIndex: 99999999
       },
       polygon: {
         material: Cesium.Color.fromCssColorString(
           this.operateOption.color
-        ).withAlpha(this.operateOption.alpha),
-        outline: true,
-        outlineColor: Cesium.Color.fromCssColorString(
-          this.operateOption.outlineColor
-        ).withAlpha(this.operateOption.outlineAlpha)
+        ).withAlpha(this.operateOption.alpha)
       },
       ellipse: {
         material: Cesium.Color.fromCssColorString(
@@ -80,6 +85,27 @@ class DrawHandlerEdit {
         numberOfVerticalLines: 0
       }
     };
+  }
+  /** 更新编辑样式。正在编辑时重绘当前图形 */
+  upDataOptions(options = {}) {
+    this.operateOption = Object.assign({}, this.operateOption, options);
+    if (!this.operateOption.outlineColor) {
+      this.operateOption.outlineColor = this.operateOption.color;
+    }
+    this.setEntityOptions();
+    if (!this.option) return;
+    if (options.style != null) this.option.style = options.style;
+    if (options.outlineWidth != null) {
+      this.option.outlineWidth = options.outlineWidth;
+    } else if (options.width != null) {
+      this.option.outlineWidth = options.width;
+    }
+    // 图形还在地图上时才重绘，避免编辑已结束后把图形加回来
+    if (!this.entity || !this.viewer.entities.contains(this.entity)) return;
+    this.viewer.entities.remove(this.entity);
+    this.entity = null;
+    this.addGeometry();
+    this.refreshEditView();
   }
   /**固定相机，禁止旋转与平移 */
   lockCamera() {
@@ -662,13 +688,26 @@ class DrawHandlerEdit {
       );
     }
   }
+  /** 线统一使用边线颜色、透明度与宽度 */
+  getOutlineLineStyle() {
+    const alpha =
+      this.operateOption.outlineAlpha == null ? 1 : this.operateOption.outlineAlpha;
+    return {
+      width: Cesium.defaultValue(this.option && this.option.outlineWidth, 4),
+      color: Cesium.Color.fromCssColorString(
+        this.operateOption.outlineColor
+      ).withAlpha(alpha)
+    };
+  }
   /**添加线 */
   addLines() {
     const properties = this.getEditProperties();
+    const outlineLine = this.getOutlineLineStyle();
     // 线sources
     const polyline = Object.assign({}, this.entity_options.polyline);
+    polyline.width = outlineLine.width;
     polyline.material = new PolylineAntialiasingMaterialProperty({
-      color: Cesium.Color.fromCssColorString(this.operateOption.outlineColor)
+      color: outlineLine.color
     });
     const coordinates = Cesium.clone(this.option.coordinates, true);
     if (this.option.type == "polygon") {
@@ -700,12 +739,94 @@ class DrawHandlerEdit {
       }
     });
   }
+  /** 按类型取闭合边界。圆、扇形、长圆与多边形的取点方式不同，线样式共用 */
+  getOutlinePositions() {
+    const type = this.option.type;
+    if (type == "circle") {
+      return shapeCoordinates.getCirclePositions(
+        Cesium.Cartesian3.fromDegrees(
+          this.option.longitude,
+          this.option.latitude,
+          this.option.maxHeight || 0
+        ),
+        this.option.radius
+      );
+    }
+    if (type == "sector") {
+      const ret = shapeCoordinates.getSectorPositions(
+        this.option.firstPoint,
+        this.option.secondPoint,
+        this.option.endPoint
+      );
+      this.option.startAngle = ret.startAngle;
+      this.option.endAngle = ret.endAngle;
+      this.option.radius = ret.radius;
+      return Cesium.Cartesian3.fromDegreesArray(ret.positions.flat(Infinity));
+    }
+    if (type == "rectangleCircle") {
+      const ret = shapeCoordinates.getRectangleCirclePositions(
+        this.option.firstPoint,
+        this.option.secondPoint,
+        this.option.endPoint
+      );
+      this.option.radius = ret.radius;
+      return Cesium.Cartesian3.fromDegreesArray(ret.positions.flat(Infinity));
+    }
+    const coordinates = this.option.coordinates || [];
+    const ring = coordinates.map(item => [
+      item[0],
+      item[1],
+      item[2] || this.option.maxHeight || 0
+    ]);
+    if (
+      ring.length > 1 &&
+      (ring[0][0] !== ring[ring.length - 1][0] ||
+        ring[0][1] !== ring[ring.length - 1][1])
+    ) {
+      ring.push(ring[0]);
+    }
+    return Cesium.Cartesian3.fromDegreesArrayHeights(ring.flat(Infinity));
+  }
+  /** 自带 outline 不能设置宽度，描边统一用折线，边界由 getOutlinePositions 按类型提供 */
+  createOutlinePolyline() {
+    const outlineLine = this.getOutlineLineStyle();
+    return {
+      width: outlineLine.width,
+      material: new PolylineAntialiasingMaterialProperty({
+        color: outlineLine.color
+      }),
+      positions: new Cesium.CallbackProperty(() => {
+        return this.getOutlinePositions();
+      }, false)
+    };
+  }
+  /** 边线样式只画指定宽度的边，不铺填充 */
+  addOutlineGeometry(properties) {
+    this.entity = this.viewer.entities.add({
+      polyline: this.createOutlinePolyline(),
+      properties
+    });
+  }
   /**添加预览 */
   addGeometry() {
     const properties = this.getEditProperties();
+    // 矩形、圆、扇形、长圆在边线样式下用折线宽度，原生 outline 不认像素宽度
+    if (
+      this.option.style == "outline" &&
+      ["polygon", "rectangle", "circle", "sector", "rectangleCircle"].indexOf(
+        this.option.type
+      ) >= 0
+    ) {
+      this.addOutlineGeometry(properties);
+      return;
+    }
     if (["polyline"].indexOf(this.option.type) >= 0) {
+      const outlineLine = this.getOutlineLineStyle();
       const polyline = Object.assign({}, this.entity_options.polyline);
-      polyline.width = 1.2;
+      polyline.width = outlineLine.width;
+      polyline.material = new PolylineAntialiasingMaterialProperty({
+        color: outlineLine.color
+      });
       polyline.positions = new Cesium.CallbackProperty(() => {
         return Cesium.Cartesian3.fromDegreesArrayHeights(
           this.option.coordinates.flat(Infinity)
@@ -721,7 +842,21 @@ class DrawHandlerEdit {
       ) >= 0
     ) {
       const polygon = Object.assign({}, this.entity_options.polygon);
-      if (this.option.type == "polygon") polygon.outline = false;
+      const fillOutline =
+        this.option.style == "fill" &&
+        ["sector", "rectangleCircle"].indexOf(this.option.type) >= 0;
+      // 矩形以及未改用折线的扇形、长圆仍使用原生描边
+      if (
+        this.option.type == "rectangle" ||
+        ((this.option.type == "sector" ||
+          this.option.type == "rectangleCircle") &&
+          !fillOutline)
+      ) {
+        polygon.outline = true;
+        polygon.outlineColor = Cesium.Color.fromCssColorString(
+          this.operateOption.outlineColor
+        ).withAlpha(this.operateOption.outlineAlpha);
+      }
       if (this.option.type == "sector") {
         polygon.hierarchy = new Cesium.CallbackProperty(() => {
           const ret = shapeCoordinates.getSectorPositions(
@@ -761,13 +896,18 @@ class DrawHandlerEdit {
       }
       polygon.height = this.option.minHeight || 0;
       polygon.extrudedHeight = this.option.maxHeight || 0.1;
-      this.entity = this.viewer.entities.add({
+      const polygonEntity = {
         polygon,
         properties
-      });
+      };
+      if (fillOutline) polygonEntity.polyline = this.createOutlinePolyline();
+      this.entity = this.viewer.entities.add(polygonEntity);
     }
     if (["circle"].indexOf(this.option.type) >= 0) {
       const ellipse = Object.assign({}, this.entity_options.ellipse);
+      const fillOutline = this.option.style == "fill";
+      // 填充态圆形不用原生 outline，改由折线描边
+      if (fillOutline) ellipse.outline = false;
       ellipse.height = this.option.minHeight || 0;
       ellipse.extrudedHeight = this.option.maxHeight || 0.1;
       ellipse.semiMajorAxis = new Cesium.CallbackProperty(() => {
@@ -776,7 +916,7 @@ class DrawHandlerEdit {
       ellipse.semiMinorAxis = new Cesium.CallbackProperty(() => {
         return this.option.radius;
       }, false);
-      this.entity = this.viewer.entities.add({
+      const circleEntity = {
         position: new Cesium.CallbackProperty(() => {
           return Cesium.Cartesian3.fromDegrees(
             this.option.longitude,
@@ -786,7 +926,9 @@ class DrawHandlerEdit {
         }, false),
         ellipse,
         properties
-      });
+      };
+      if (fillOutline) circleEntity.polyline = this.createOutlinePolyline();
+      this.entity = this.viewer.entities.add(circleEntity);
     }
     if (["point"].indexOf(this.option.type) >= 0) {
       const point = Object.assign({}, this.entity_options.point);

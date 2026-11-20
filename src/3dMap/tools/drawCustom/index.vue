@@ -25,10 +25,12 @@
   </ul>
   <!-- 图形编辑 -->
   <DrawCustomEdit
+    ref="editPanelRef"
     :cssText="props.editCssText || props.cssText"
     v-if="drawCustomEdit.panelShow"
     :key="drawCustomEdit.properties"
     :drawResult="drawCustomEdit.properties"
+    :options="editOptions"
     @cancel="cancelEdit"
     @confirm="confirmEdit"
   >
@@ -65,11 +67,13 @@
         </template>
       </ul>
       <DrawCustomEdit
+        ref="inputEditRef"
         v-if="inputDrawResult"
         :key="inputDrawResult.type"
         :drawResult="inputDrawResult"
         :cssText="'position: relative;'"
         :inputTextArea="props.editInputTextArea"
+        :options="editOptions"
         @cancel="inputCancel"
         @confirm="inputConfirm"
       />
@@ -92,6 +96,7 @@ const emits = defineEmits(["cancel", "confirm"]);
  * editCssText 编辑面板样式
  * continuity 连续绘制
  * hasCancel 取消按钮
+ * options 绘制初始化参数，与 DrawHandler 入参一致
  */
 const props = defineProps({
   types: {
@@ -138,6 +143,12 @@ const props = defineProps({
       return true;
     }
   },
+  options: {
+    type: Object,
+    default: () => {
+      return {};
+    }
+  },
   editInputTextArea: {
     type: Boolean,
     default: () => {
@@ -154,6 +165,7 @@ const {
   newDrawHandlerByModeDestroy,
   start,
   stop,
+  upDataOptions,
   cancel,
   cancelEdit,
   confirmEdit,
@@ -163,6 +175,17 @@ const {
   inputCancel,
   inputConfirm
 } = Hook(emits, props);
+const editPanelRef = ref(null);
+const inputEditRef = ref(null);
+// 传给编辑组件的样式，与绘制 options 同步更新
+const editOptions = ref({ ...(props.options || {}) });
+/** 更新绘制样式，并同步到当前编辑组件 */
+const syncUpDataOptions = options => {
+  editOptions.value = { ...editOptions.value, ...(options || {}) };
+  upDataOptions(options);
+  editPanelRef.value?.upDataOptions?.(options);
+  inputEditRef.value?.upDataOptions?.(options);
+};
 // Function
 onBeforeMount(() => {
   // 拾取类型设置
@@ -190,15 +213,13 @@ onUnmounted(() => {
   newDrawHandlerByModeDestroy();
 });
 // defineExpose
-defineExpose({ start, stop });
+defineExpose({ start, stop, upDataOptions: syncUpDataOptions });
 </script>
 <style lang="scss" scoped>
 .tool-box {
   position: absolute;
   z-index: 10;
-  // display: flex;
   overflow: hidden;
-  // padding: 5px;
   background: var(--color-bg-panel);
   color: var(--color-font);
   border-radius: 4px;
@@ -211,20 +232,26 @@ defineExpose({ start, stop });
     font-size: 15px;
     cursor: default;
     margin: 5px;
-    background: #22273165;
+    background: var(--color-bg-3);
     border-radius: 4px;
+    overflow: hidden;
     img {
-      width: 70%;
+      width: 60%;
+      transform: translateY(-100px);
+      filter: drop-shadow(var(--color-font) 0 100px);
     }
   }
   li.active {
-    background: var(--color-main);
+    background: var(--color-main-1);
     border-radius: 3px;
     box-shadow: inset 0 0 0 1px var(--color-border-4);
+    img{
+      filter: drop-shadow(var(--color-font-select) 0 100px);
+    }
   }
   li[type="confirm"] {
     margin-right: 0;
-    color: var(--color-main);
+    color: var(--color-main-1);
   }
   li[type="cancel"] {
     margin-left: 0;

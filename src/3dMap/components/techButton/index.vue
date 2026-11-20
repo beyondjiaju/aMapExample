@@ -34,7 +34,7 @@ defineProps<{
   border-color: var(--color-border);
   box-shadow: inset 0 0 1px var(--color-border);
   color: var(--color-font-select);
-  background: var(--color-main);
+  background: var(--color-main-1);
 }
 
 .tech-btn__caret {

@@ -12,13 +12,17 @@ class DrawCustomEdit {
   newDrawHandlerEditByMode: any;
   editData: any;
   mapEmitterOff: any;
+  editOptions: any;
+  endCallback: any;
   constructor(
     option = {
       endCallback: null
     }
   ) {
     const { endCallback, ...other } = option;
-    const newOption = Object.assign(
+    this.endCallback = endCallback;
+    // 编辑样式单独保存，后续更新和模式切换都用这份
+    this.editOptions = Object.assign(
       {
         color: "#ffff00",
         alpha: 0.5,
@@ -29,18 +33,33 @@ class DrawCustomEdit {
         ...other
       }
     );
-    this.setDrawHandlerEditByMode(newOption, endCallback);
+    this.setDrawHandlerEditByMode(this.editOptions, this.endCallback);
     // 2\3d切换更新
     this.mapEmitterOff = mapEmitter.on(
       "mapEvents:mapModeChangeSetSdkUtilsByCurrentMode",
       () => {
         this.newDrawHandlerEditByMode?.clear();
         this.newDrawHandlerEditByMode = null;
-        this.setDrawHandlerEditByMode(newOption, endCallback);
+        this.setDrawHandlerEditByMode(this.editOptions, this.endCallback);
         if (!this.editData) return;
         this.start(this.editData);
       }
     );
+  }
+  /** 更新编辑样式，并同步到当前地图的编辑工具 */
+  upDataOptions(options) {
+    this.editOptions = { ...this.editOptions, ...(options || {}) };
+    if (!this.editOptions.outlineColor) {
+      this.editOptions.outlineColor = this.editOptions.color;
+    }
+    // 当前图形上的样式一并改掉，模式切换后仍按最新样式恢复
+    if (this.editData) {
+      if (this.editOptions.style != null) this.editData.style = this.editOptions.style;
+      if (this.editOptions.outlineWidth != null) {
+        this.editData.outlineWidth = this.editOptions.outlineWidth;
+      }
+    }
+    this.newDrawHandlerEditByMode?.upDataOptions(this.editOptions);
   }
   setDrawHandlerEditByMode(option, endCallback = null) {
     const mapMode = mapData().mapMode;
@@ -85,7 +104,9 @@ class DrawCustomEdit {
       if (newCoordinates.length >= number) {
         return {
           type: option.type,
-          coordinates: newCoordinates
+          coordinates: newCoordinates,
+          style: option.style,
+          outlineWidth: option.outlineWidth
         };
       } else {
         return null;
@@ -114,7 +135,9 @@ class DrawCustomEdit {
         type: option.type,
         longitude: option.center[0],
         latitude: option.center[1],
-        radius: option.radius
+        radius: option.radius,
+        style: option.style,
+        outlineWidth: option.outlineWidth
       };
     }
     if (option.type == "sector") {
@@ -125,7 +148,9 @@ class DrawCustomEdit {
         latitude: option.points.first[1],
         radius: option.radius,
         startAngle: option.startAngle,
-        endAngle: option.endAngle
+        endAngle: option.endAngle,
+        style: option.style,
+        outlineWidth: option.outlineWidth
       };
     }
     if (option.type == "rectangleCircle") {
@@ -141,7 +166,9 @@ class DrawCustomEdit {
         latitude: option.points.first[1],
         radius: option.radius,
         longitude_second: option.points.second[0],
-        latitude_second: option.points.second[1]
+        latitude_second: option.points.second[1],
+        style: option.style,
+        outlineWidth: option.outlineWidth
       };
     }
   }
@@ -161,14 +188,18 @@ class DrawCustomEdit {
       });
       return {
         type: option.type,
-        coordinates: newCoordinates
+        coordinates: newCoordinates,
+        style: option.style,
+        outlineWidth: option.outlineWidth
       };
     }
     if (option.type == "circle") {
       return {
         type: option.type,
         center: [option.longitude, option.latitude],
-        radius: option.radius
+        radius: option.radius,
+        style: option.style,
+        outlineWidth: option.outlineWidth
       };
     }
     if (option.type == "sector") {
@@ -215,7 +246,9 @@ class DrawCustomEdit {
         },
         radius: option.radius,
         startAngle: option.startAngle,
-        endAngle: option.endAngle
+        endAngle: option.endAngle,
+        style: option.style,
+        outlineWidth: option.outlineWidth
       };
     }
     if (option.type == "rectangleCircle") {
@@ -260,7 +293,9 @@ class DrawCustomEdit {
           second,
           end
         },
-        radius: option.radius
+        radius: option.radius,
+        style: option.style,
+        outlineWidth: option.outlineWidth
       };
     }
   }
